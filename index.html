@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Warehouse System - Excel Integrated</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-[#151521] text-gray-800 dark:text-[#ffffff] h-screen overflow-hidden flex font-sans">
+  
+  <!-- Login Container -->
+  <div id="loginContainer" class="flex w-full h-screen items-center justify-center bg-gray-50 dark:bg-[#0d0d12] z-50 transition-colors duration-300">
+      <div class="neon-login-wrapper w-full max-w-md mx-4 relative overflow-hidden rounded-[1.25rem] bg-transparent shadow-[0_0_40px_rgba(10,77,60,0.15)] group p-1">
+        <div class="bg-white dark:bg-[#151521] p-10 rounded-xl w-full relative z-10 flex flex-col h-full items-center">
+          <div class="text-center mb-10 w-full">
+            <h2 class="text-3xl font-black text-[#0a4d3c] dark:text-[#35eaff] mb-2 tracking-tight uppercase flex items-center justify-center">
+              LOGIN <i data-lucide="lock" class="w-5 h-5 ml-2 text-[#0a4d3c] dark:text-[#35eaff]"></i>
+            </h2>
+            <p class="text-sm text-gray-500 font-medium tracking-widest uppercase mt-2">Sistem Gudang Terpadu</p>
+          </div>
+          
+          <form id="loginForm" class="space-y-6 w-full">
+            <div class="relative">
+              <input type="text" id="loginId" required 
+                class="w-full bg-gray-100 dark:bg-[#0d0d12] text-gray-900 dark:text-white border border-gray-200 dark:border-transparent rounded-xl py-4 px-5 focus:outline-none focus:ring-2 focus:ring-[#0a4d3c] transition-all placeholder-gray-500 text-sm font-medium" 
+                placeholder="ID User / Nama / Email">
+            </div>
+            <div class="relative">
+              <input type="password" id="loginPassword" required 
+                class="w-full bg-gray-100 dark:bg-[#0d0d12] text-gray-900 dark:text-white border border-gray-200 dark:border-transparent rounded-xl py-4 px-5 focus:outline-none focus:ring-2 focus:ring-[#0a4d3c] transition-all placeholder-gray-500 text-sm font-medium" 
+                placeholder="Password">
+            </div>
+            <div class="pt-6">
+              <button type="submit" 
+                class="w-full bg-[#0a4d3c] hover:bg-[#073b2d] text-white px-4 py-4 rounded-xl font-bold transition-all shadow-lg hover:-translate-y-0.5">
+                Sign In
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  <!-- App Container -->
+  <div id="appContainer" class="hidden h-screen w-full flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 bg-[#0a4d3c] dark:bg-[#1e1e2d] dark:border-r dark:border-[#2b2b40] text-white flex flex-col transition-all duration-300 flex-shrink-0 z-20">
+      <div class="p-6">
+        <h1 class="text-lg font-bold leading-tight">WMS LJR - SOS</h1>
+        <span id="userRoleBadge" class="inline-block mt-2 px-3 py-0.5 bg-yellow-400 text-[10px] font-bold rounded-full text-yellow-900 tracking-wider hidden"></span>
+      </div>
+
+      <nav class="flex-1 mt-4 space-y-1 px-3 overflow-y-auto custom-scrollbar">
+        <a href="#" class="nav-item active flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-white/10 border-l-4 border-yellow-400" data-target="tab-dashboard">
+          <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3 opacity-80"></i> Dashboard
+        </a>
+        <a href="#" id="navMasterDataTab" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors hidden" data-target="tab-master-data">
+          <i data-lucide="database" class="w-5 h-5 mr-3 opacity-80"></i> Master Data
+        </a>
+        <a href="#" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors" data-target="tab-stock-inventory">
+          <i data-lucide="package" class="w-5 h-5 mr-3 opacity-80"></i> Stock Inventory
+        </a>
+        <a href="#" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors" data-target="tab-inbond">
+          <i data-lucide="arrow-down-to-line" class="w-5 h-5 mr-3 opacity-80"></i> Inbond
+        </a>
+        <a href="#" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors" data-target="tab-outbond">
+          <i data-lucide="arrow-up-from-line" class="w-5 h-5 mr-3 opacity-80"></i> Outbond
+        </a>
+        <a href="#" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors" data-target="tab-return">
+          <i data-lucide="rotate-ccw" class="w-5 h-5 mr-3 opacity-80"></i> Return
+        </a>
+        <a href="#" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors" data-target="tab-pengiriman">
+          <i data-lucide="truck" class="w-5 h-5 mr-3 opacity-80"></i> Pengiriman
+        </a>
+        <a href="#" id="navUsersTab" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors hidden" data-target="tab-users">
+          <i data-lucide="users" class="w-5 h-5 mr-3 opacity-80"></i> Users
+        </a>
+      </nav>
+
+      <div class="p-4 mt-auto">
+          <!-- Profile Card -->
+          <div class="bg-white/5 rounded-lg p-3 flex items-center mb-3">
+            <div class="w-10 h-10 rounded-full bg-white text-[#18392b] flex items-center justify-center mr-3 shrink-0">
+              <i data-lucide="user" class="w-5 h-5"></i>
+            </div>
+            <div class="overflow-hidden">
+              <div id="profileName" class="text-white font-bold text-sm truncate">Nama User</div>
+              <div id="profileEmail" class="text-gray-300 text-xs truncate" style="font-size: 0.7rem;">email@domain.com</div>
+            </div>
+          </div>
+          <button id="btnThemeToggle" class="w-full bg-white/10 hover:bg-white/20 text-white py-2.5 rounded-lg text-sm font-semibold flex justify-center items-center transition-colors mb-3">
+          <i data-lucide="moon" class="w-4 h-4 mr-2" id="themeIcon"></i> <span id="themeText">Mode Redup</span>
+        </button>
+        <button id="btnLogout" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg text-sm font-semibold flex justify-center items-center transition-colors shadow-sm">
+          <i data-lucide="power" class="w-4 h-4 mr-2"></i> LOGOUT
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f4f7f6] dark:bg-[#151521]">
+      <!-- Header -->
+      <header class="bg-white dark:bg-[#1e1e2d] px-8 py-5 flex flex-col sm:flex-row sm:justify-between sm:items-center z-10 border-b border-gray-100 dark:border-[#2b2b40] sticky top-0">
+        <div class="flex items-center gap-4">
+          <button id="btnToggleSidebar" class="p-2 bg-gray-100 dark:bg-[#2b2b40] rounded-lg hover:bg-gray-200 dark:hover:bg-[#323248] transition-colors">
+            <i data-lucide="menu" class="w-5 h-5 text-gray-700 dark:text-gray-300"></i>
+          </button>
+          <div>
+            <h2 id="pageTitle" class="text-2xl font-bold text-gray-800 dark:text-[#ffffff]">Master Data</h2>
+            <p id="pageSubtitle" class="text-sm text-gray-500 font-medium">Sistem / Master Data</p>
+          </div>
+        </div>
+        <div id="headerActions" class="flex items-center space-x-4">
+            <div id="syncBadge" class="hidden items-center bg-green-50 text-green-600 px-3 py-1 rounded-full text-xs font-bold border border-green-200">
+               <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-2"></span> Auto Sync
+            </div>
+            
+            <div class="flex items-center gap-3">
+              <!-- Filter Tanggal (Global) -->
+              <div id="headerDateFilter" class="flex items-center gap-2 bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-gray-700 p-1 rounded-lg">
+                <div class="flex flex-col px-1">
+                  <label class="text-[9px] font-bold text-gray-500 uppercase">Tanggal Awal</label>
+                  <input type="date" id="dash_start_date" class="border-none bg-transparent p-0 text-xs focus:ring-0 dark:text-white">
+                </div>
+                <div class="flex flex-col px-1">
+                  <label class="text-[9px] font-bold text-gray-500 uppercase">Tanggal Akhir</label>
+                  <input type="date" id="dash_end_date" class="border-none bg-transparent p-0 text-xs focus:ring-0 dark:text-white">
+                </div>
+                <button id="btnFilterDashboard" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow-sm flex items-center transition">
+                  <i data-lucide="filter" class="w-3 h-3 mr-1"></i> Terapkan
+                </button>
+                <button id="btnResetDashboard" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1.5 px-3 rounded shadow-sm flex items-center transition dark:bg-gray-700 dark:text-white">
+                  <i data-lucide="x" class="w-3 h-3 mr-1"></i> Reset
+                </button>
+              </div>
+
+              <!-- Tombol Input Form (Hidden by default) -->
+              <button id="btnToggleForm" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
+                <i data-lucide="scan-line" class="w-4 h-4 mr-2"></i> <span id="lblToggleForm">SCAN / INPUT</span>
+              </button>
+
+              <!-- Tombol Download Template (Hidden by default) -->
+              <button id="btnDownloadTemplate" class="hidden bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-2"></i> TEMPLATE
+              </button>
+              
+              <!-- Tombol Upload CSV (Hidden by default) -->
+              <button id="btnUploadCsv" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
+                <i data-lucide="upload" class="w-4 h-4 mr-2"></i> UPLOAD
+              </button>
+              <input type="file" id="fileUploadCsv" accept=".csv" class="hidden" />
+
+              <!-- Pencarian (Search) -->
+              <div class="relative flex gap-2 items-center">
+                <div class="relative">
+                  <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-gray-400"></i>
+                  <input type="text" id="globalSearch" placeholder="Pencarian / Search..." class="pl-9 pr-8 py-2 border border-gray-200 dark:border-[#2b2b40] rounded-lg text-sm focus:outline-none focus:border-blue-500 dark:bg-[#151521] dark:text-gray-200 w-48 focus:w-64 transition-all">
+                  <button type="button" id="btnClearSearch" class="absolute right-2 top-2.5 text-gray-400 hover:text-red-500 hidden" title="Hapus Pencarian">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                  </button>
+                </div>
+                <button type="button" id="btnGlobalSearch" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow">Cari</button>
+              </div>
+
+              <button id="btnSyncInventory" class="hidden bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
+                <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> RECALCULATE STOCK
+              </button>
+              
+              <!-- Download File -->
+              <button id="btnDownloadFile" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
+                <i data-lucide="download" class="w-4 h-4 mr-2"></i> DOWNLOAD FILE
+              </button>
+        </div>
+      </header>
+
+      <!-- Content Area -->
+        <div class="flex-1 overflow-auto p-6 relative">
+          
+          <!-- Admin Summary Cards (Global Top) -->
+          <div id="adminSummaryCard" class="hidden mb-6 flex w-full rounded-xl overflow-hidden shadow-sm text-white font-bold text-center">
+            <div class="flex-1 bg-green-500 py-3 px-2 flex flex-col justify-center">
+              <span class="text-[10px] md:text-xs opacity-90 uppercase tracking-wider mb-1">Inbond</span>
+              <span id="sumInbond" class="text-lg md:text-xl">0</span>
+            </div>
+            <div class="flex-1 bg-yellow-500 py-3 px-2 flex flex-col justify-center">
+              <span class="text-[10px] md:text-xs opacity-90 uppercase tracking-wider mb-1">Outbond</span>
+              <span id="sumOutbond" class="text-lg md:text-xl">0</span>
+            </div>
+            <div class="flex-1 bg-orange-500 py-3 px-2 flex flex-col justify-center">
+              <span class="text-[10px] md:text-xs opacity-90 uppercase tracking-wider mb-1">Return</span>
+              <span id="sumReturn" class="text-lg md:text-xl">0</span>
+            </div>
+            <div class="flex-1 bg-red-600 py-3 px-2 flex flex-col justify-center">
+              <span class="text-[10px] md:text-xs opacity-90 uppercase tracking-wider mb-1">Stock</span>
+              <span id="sumStock" class="text-lg md:text-xl">0</span>
+            </div>
+          </div>
+
+          <!-- TAB: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content active animate-slide-in">
+          
+          <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6 sticky top-0 z-20 bg-[#f4f7f6] dark:bg-gray-900 pt-1 pb-3 -mt-1">
+            <div class="panel flex items-center p-4">
+              <div class="p-3 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl"><i data-lucide="arrow-down-to-line" class="w-6 h-6"></i></div>
+              <div class="ml-4">
+                <p class="text-xs font-medium text-gray-500">Inbond</p>
+                <h4 class="text-2xl font-bold text-gray-800 dark:text-white" id="dash_inbond"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mt-1"></i></h4>
+              </div>
+            </div>
+            <div class="panel flex items-center p-4">
+              <div class="p-3 bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-xl"><i data-lucide="arrow-up-from-line" class="w-6 h-6"></i></div>
+              <div class="ml-4">
+                <p class="text-xs font-medium text-gray-500">Outbond</p>
+                <h4 class="text-2xl font-bold text-gray-800 dark:text-white" id="dash_outbond"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mt-1"></i></h4>
+              </div>
+            </div>
+            <div class="panel flex items-center p-4">
+              <div class="p-3 bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 rounded-xl"><i data-lucide="rotate-ccw" class="w-6 h-6"></i></div>
+              <div class="ml-4">
+                <p class="text-xs font-medium text-gray-500">Return</p>
+                <h4 class="text-2xl font-bold text-gray-800 dark:text-white" id="dash_return"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mt-1"></i></h4>
+              </div>
+            </div>
+            <div class="panel flex items-center p-4 bg-gradient-to-br from-[#0a4d3c] to-[#073b2d] text-white">
+              <div class="p-3 bg-white/20 rounded-xl"><i data-lucide="package" class="w-6 h-6"></i></div>
+              <div class="ml-4">
+                <p class="text-xs font-medium text-blue-100 opacity-80">Inventori</p>
+                <h4 class="text-2xl font-bold" id="dash_inventory">-</h4>
+              </div>
+            </div>
+            <div class="panel flex items-center p-4">
+                <div class="p-3 bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400 rounded-xl"><i data-lucide="arrow-down-to-line" class="w-6 h-6"></i></div>
+                <div class="ml-4">
+                  <p class="text-xs font-medium text-gray-500">Kedatangan</p>
+                  <h4 class="text-2xl font-bold text-gray-800 dark:text-white" id="dash_kedatangan"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mt-1"></i></h4>
+                </div>
+              </div>
+              <div class="panel flex items-center p-4">
+              <div class="p-3 bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 rounded-xl"><i data-lucide="truck" class="w-6 h-6"></i></div>
+              <div class="ml-4">
+                <p class="text-xs font-medium text-gray-500">Pengiriman</p>
+                <h4 class="text-2xl font-bold text-gray-800 dark:text-white" id="dash_pengiriman"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mt-1"></i></h4>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 3 Grafik Transaksi Terpisah -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="panel p-4">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="panel-title text-sm font-bold text-gray-700 dark:text-gray-300">Tren Inbond</h3>
+                <span class="text-xs text-gray-400 font-medium">Data Terkini</span>
+              </div>
+              <div class="relative h-64 w-full">
+                <canvas id="chartInbond"></canvas>
+              </div>
+            </div>
+            <div class="panel p-4">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="panel-title text-sm font-bold text-gray-700 dark:text-gray-300">Tren Outbond</h3>
+                <span class="text-xs text-gray-400 font-medium">Data Terkini</span>
+              </div>
+              <div class="relative h-64 w-full">
+                <canvas id="chartOutbond"></canvas>
+              </div>
+            </div>
+            <div class="panel p-4">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="panel-title text-sm font-bold text-gray-700 dark:text-gray-300">Tren Return</h3>
+                <span class="text-xs text-gray-400 font-medium">Data Terkini</span>
+              </div>
+              <div class="relative h-64 w-full">
+                <canvas id="chartReturn"></canvas>
+              </div>
+            </div>
+            <div class="panel p-4">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="panel-title text-sm font-bold text-gray-700 dark:text-gray-300">Tren Pengiriman (Truk)</h3>
+                <span class="text-xs text-gray-400 font-medium">Data Terkini</span>
+              </div>
+              <div class="relative h-64 w-full">
+                <canvas id="chartPengiriman"></canvas>
+              </div>
+            </div>
+          </div>
+          
+          <div class="w-full mb-6">
+            <!-- Chart Komposisi Brand -->
+            <div class="panel">
+              <div class="panel-header border-b border-gray-100 dark:border-[#2b2b40]">
+                <h3 class="panel-title text-sm font-bold text-gray-700 dark:text-gray-300">Komposisi Brand (Master)</h3>
+              </div>
+              <div class="p-4 h-80 relative flex items-center justify-center">
+                <canvas id="chartKategori"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: MASTER DATA -->
+        <div id="tab-master-data" class="tab-content hidden animate-slide-in">
+          <div class="panel">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Data Master</h3>
+              <button id="btnDownloadMasterCsv" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
+                <i data-lucide="download" class="w-4 h-4 mr-2"></i> DOWNLOAD CSV
+              </button>
+            </div>
+            <div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar">
+              <table class="w-full text-left border-collapse whitespace-nowrap">
+                <thead class="sticky top-0 z-10">
+                  <tr class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider">
+                    <th class="px-4 py-4 font-bold rounded-l-lg">BARCODE</th>
+                    <th class="px-4 py-4 font-bold">SKU</th>
+                    <th class="px-4 py-4 font-bold">DESCRIPTION</th>
+                    <th class="px-4 py-4 font-bold">COLOR</th>
+                    <th class="px-4 py-4 font-bold">SIZE</th>
+                    <th class="px-4 py-4 font-bold">PRICE</th>
+                    <th class="px-4 py-4 font-bold">CATEGORY</th>
+                    <th class="px-4 py-4 font-bold">BRAND</th>
+                    <th class="px-4 py-4 font-bold">AGE/GENDER</th>
+                    <th class="px-4 py-4 font-bold">SEASON</th>
+                    <th class="px-4 py-4 font-bold text-center rounded-r-lg">AKSI</th>
+                  </tr>
+                </thead>
+                <tbody id="masterTableBody" class="divide-y divide-gray-100 dark:divide-[#2b2b40] text-sm bg-white dark:bg-[#1e1e2d]">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: STOCK INVENTORY -->
+        <div id="tab-stock-inventory" class="tab-content hidden animate-slide-in">
+          <div class="panel">
+            <div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar">
+              <table class="w-full text-left border-collapse whitespace-nowrap">
+                <thead class="sticky top-0 z-10">
+                  <tr class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider">
+                    <th class="px-4 py-4 font-bold rounded-l-lg">SCAN</th>
+                    <th class="px-4 py-4 font-bold">BRAND</th>
+                    <th class="px-4 py-4 font-bold">BARCODE</th>
+                    <th class="px-4 py-4 font-bold">SKU</th>
+                    <th class="px-4 py-4 font-bold">DESCRIPTION</th>
+                    <th class="px-4 py-4 font-bold">COLOUR</th>
+                    <th class="px-4 py-4 font-bold">SIZE</th>
+                    <th class="px-4 py-4 font-bold">PRICE</th>
+                    <th class="px-4 py-4 font-bold bg-green-600 text-center">INBOND</th>
+                    <th class="px-4 py-4 font-bold bg-yellow-500 text-center">OUTBOND</th>
+                    <th class="px-4 py-4 font-bold bg-orange-600 text-center">RETURN</th>
+                    <th class="px-4 py-4 font-bold bg-red-600 text-center rounded-r-lg">STOCK</th>
+                  </tr>
+                </thead>
+                <tbody id="stockTableBody" class="divide-y divide-gray-100 dark:divide-[#2b2b40] text-sm bg-white dark:bg-[#1e1e2d]">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: INBOND -->
+        <div id="tab-inbond" class="tab-content hidden animate-slide-in">
+          <div id="panelFormInbond" class="panel mb-6 hidden">
+            <div class="panel-header"><h3 class="panel-title text-sm">Form Input Inbond (Penyimpanan Sementara)</h3></div>
+            <div class="p-4">
+              <form id="inbondForm" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <input type="hidden" id="in_type" value="INBOND">
+                <div><label class="form-label text-xs">Scan Barcode</label><input type="text" id="in_barcode" required class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Brand</label><input type="text" id="in_brand" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">SKU</label><input type="text" id="in_sku" class="form-input py-2"></div>
+                <div class="md:col-span-2"><label class="form-label text-xs">Description</label><input type="text" id="in_desc" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Colour</label><input type="text" id="in_colour" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Size</label><input type="text" id="in_size" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Price</label><input type="text" id="in_price" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Qty (In)</label><input type="number" id="in_qty" required min="1" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Bin/Box</label><input type="text" id="in_bin" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Inventory Transfer Number</label><input type="text" id="in_tf" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">From Location</label><input type="text" id="in_loc" class="form-input py-2"></div>
+                <div class="col-span-full flex justify-end">
+                  <button type="button" id="btnSubmitInbondTemp" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow">Tambah ke List Sementara</button>
+                </div>
+              </form>
+              
+              <!-- Tabel Sementara Inbond -->
+              <div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h4 class="text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">Data Sementara (Belum Disimpan)</h4>
+                <div class="overflow-x-auto max-h-60 border border-gray-200 dark:border-gray-700 rounded">
+                  <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10">
+                      <tr><th class="p-2">Jam</th><th class="p-2">Brand</th><th class="p-2">Barcode</th><th class="p-2">SKU</th><th class="p-2">Desc</th><th class="p-2">Colour</th><th class="p-2">Size</th><th class="p-2">Price</th><th class="p-2">Qty</th><th class="p-2">Bin/Box</th><th class="p-2">Inv. TF No</th><th class="p-2">From Loc</th><th class="p-2 text-center">Aksi</th></tr>
+                    </thead>
+                    <tbody id="tempInbondTableBody"></tbody>
+                  </table>
+                </div>
+                <div class="flex justify-between items-center mt-4">
+                    <div class="text-sm font-bold text-gray-700 dark:text-gray-300">Total Qty: <span id="tempInbondTotalQty">0</span></div>
+                    <button id="btnSimpanInbondFinal" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow disabled:opacity-50" disabled>Simpan Inbond ke Database</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <div id="panelTableInbond" class="panel"><div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10"><tr><th class="p-3">Tanggal</th><th class="p-3">Scan</th><th class="p-3">Brand</th><th class="p-3">Barcode</th><th class="p-3">SKU</th><th class="p-3">Description</th><th class="p-3">Colour</th><th class="p-3">Size</th><th class="p-3">Price</th><th class="p-3">Qty</th><th class="p-3">Bin/Box</th><th class="p-3">Inventory Transfer Number</th><th class="p-3">From Location</th><th class="p-3 text-center">Aksi</th></tr></thead><tbody id="inbondTableBody"></tbody></table></div></div>
+        </div>
+
+        <!-- TAB: OUTBOND -->
+        <div id="tab-outbond" class="tab-content hidden animate-slide-in">
+          <div id="panelFormOutbond" class="panel mb-6 hidden">
+            <div class="panel-header"><h3 class="panel-title text-sm">Form Input Outbond (Penyimpanan Sementara)</h3></div>
+            <div class="p-4">
+              <form id="outbondForm" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <input type="hidden" id="out_type" value="OUTBOND">
+                <div><label class="form-label text-xs">Scan Barcode</label><input type="text" id="out_barcode" required class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Brand</label><input type="text" id="out_brand" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">SKU</label><input type="text" id="out_sku" class="form-input py-2"></div>
+                <div class="md:col-span-2"><label class="form-label text-xs">Description</label><input type="text" id="out_desc" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Colour</label><input type="text" id="out_colour" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Size</label><input type="text" id="out_size" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Price</label><input type="text" id="out_price" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Qty (Out)</label><input type="number" id="out_qty" required min="1" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Bin/Box</label><input type="text" id="out_bin" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Inventory Transfer Number</label><input type="text" id="out_tf" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">To Location</label><input type="text" id="out_loc" class="form-input py-2"></div>
+                <div class="col-span-full flex justify-end">
+                  <button type="button" id="btnSubmitOutbondTemp" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow">Tambah ke List Sementara</button>
+                </div>
+              </form>
+              
+              <!-- Tabel Sementara Outbond -->
+              <div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h4 class="text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">Data Sementara (Belum Disimpan)</h4>
+                <div class="overflow-x-auto max-h-60 border border-gray-200 dark:border-gray-700 rounded">
+                  <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10">
+                      <tr><th class="p-2">Jam</th><th class="p-2">Brand</th><th class="p-2">Barcode</th><th class="p-2">SKU</th><th class="p-2">Desc</th><th class="p-2">Colour</th><th class="p-2">Size</th><th class="p-2">Price</th><th class="p-2">Qty</th><th class="p-2">Bin/Box</th><th class="p-2">Inv. TF No</th><th class="p-2">To Loc</th><th class="p-2 text-center">Aksi</th></tr>
+                    </thead>
+                    <tbody id="tempOutbondTableBody"></tbody>
+                  </table>
+                </div>
+                <div class="flex justify-between items-center mt-4">
+                    <div class="text-sm font-bold text-gray-700 dark:text-gray-300">Total Qty: <span id="tempOutbondTotalQty">0</span></div>
+                    <button id="btnSimpanOutbondFinal" class="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 px-6 py-2 rounded-lg text-sm font-bold shadow disabled:opacity-50" disabled>Simpan Outbond ke Database</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <div id="panelTableOutbond" class="panel"><div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10"><tr><th class="p-3">Tanggal</th><th class="p-3">Scan</th><th class="p-3">Brand</th><th class="p-3">Barcode</th><th class="p-3">SKU</th><th class="p-3">Description</th><th class="p-3">Colour</th><th class="p-3">Size</th><th class="p-3">Price</th><th class="p-3">Qty</th><th class="p-3">Bin/Box</th><th class="p-3">Inventory Transfer Number</th><th class="p-3">To Location</th><th class="p-3 text-center">Aksi</th></tr></thead><tbody id="outbondTableBody"></tbody></table></div></div>
+        </div>
+
+        <!-- TAB: RETURN -->
+        <div id="tab-return" class="tab-content hidden animate-slide-in">
+          <div id="panelFormReturn" class="panel mb-6 hidden">
+            <div class="panel-header"><h3 class="panel-title text-sm">Form Input Return (Penyimpanan Sementara)</h3></div>
+            <div class="p-4">
+              <form id="returnForm" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <input type="hidden" id="ret_type" value="RETURN">
+                <div><label class="form-label text-xs">Scan Barcode</label><input type="text" id="ret_barcode" required class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Brand</label><input type="text" id="ret_brand" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">SKU</label><input type="text" id="ret_sku" class="form-input py-2"></div>
+                <div class="md:col-span-2"><label class="form-label text-xs">Description</label><input type="text" id="ret_desc" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Colour</label><input type="text" id="ret_colour" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Size</label><input type="text" id="ret_size" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Price</label><input type="text" id="ret_price" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Qty (Return)</label><input type="number" id="ret_qty" required min="1" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Bin/Box</label><input type="text" id="ret_bin" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Inventory Transfer Number</label><input type="text" id="ret_tf" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">From Location</label><input type="text" id="ret_from" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">To Location</label><input type="text" id="ret_to" class="form-input py-2"></div>
+                <div class="col-span-full flex justify-end">
+                  <button type="button" id="btnSubmitReturnTemp" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow">Tambah ke List Sementara</button>
+                </div>
+              </form>
+              
+              <!-- Tabel Sementara Return -->
+              <div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h4 class="text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">Data Sementara (Belum Disimpan)</h4>
+                <div class="overflow-x-auto max-h-60 border border-gray-200 dark:border-gray-700 rounded">
+                  <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10">
+                      <tr><th class="p-2">Jam</th><th class="p-2">Brand</th><th class="p-2">Barcode</th><th class="p-2">SKU</th><th class="p-2">Desc</th><th class="p-2">Colour</th><th class="p-2">Size</th><th class="p-2">Price</th><th class="p-2">Qty</th><th class="p-2">Bin/Box</th><th class="p-2">Inv. TF No</th><th class="p-2">From Loc</th><th class="p-2">To Loc</th><th class="p-2 text-center">Aksi</th></tr>
+                    </thead>
+                    <tbody id="tempReturnTableBody"></tbody>
+                  </table>
+                </div>
+                <div class="flex justify-between items-center mt-4">
+                    <div class="text-sm font-bold text-gray-700 dark:text-gray-300">Total Qty: <span id="tempReturnTotalQty">0</span></div>
+                    <button id="btnSimpanReturnFinal" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-sm font-bold shadow disabled:opacity-50" disabled>Simpan Return ke Database</button>
+                </div>
+              </div>
+              
+            </div>
+          </div>
+          <div id="panelTableReturn" class="panel"><div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10"><tr><th class="p-3">Tanggal</th><th class="p-3">Scan</th><th class="p-3">Brand</th><th class="p-3">Barcode</th><th class="p-3">SKU</th><th class="p-3">Description</th><th class="p-3">Colour</th><th class="p-3">Size</th><th class="p-3">Price</th><th class="p-3">Qty</th><th class="p-3">Bin/Box</th><th class="p-3">Inventory Transfer Number</th><th class="p-3">From Location</th><th class="p-3">To Location</th><th class="p-3 text-center">Aksi</th></tr></thead><tbody id="returnTableBody"></tbody></table></div></div>
+        </div>
+
+        <!-- TAB: PENGIRIMAN -->
+        <div id="tab-pengiriman" class="tab-content hidden animate-slide-in">
+          <div class="space-y-6">
+            <!-- Form Pengiriman -->
+            <div id="panelFormPengiriman" class="panel hidden">
+              <div class="panel-header"><h3 class="panel-title text-sm">Form Data Pengiriman (Penyimpanan Sementara)</h3></div>
+              <div class="p-4">
+                <form id="pengirimanForm" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  <div><label class="form-label text-xs">Tanggal</label><input type="date" id="pg_tanggal" required class="form-input py-2"></div>
+                    <div><label class="form-label text-xs">IN / OUT</label><select id="pg_inout" required class="form-input py-2"><option value="Outbond">Outbond</option><option value="Inbond">Inbond</option></select></div>
+                  <div><label class="form-label text-xs">Nopol</label><input type="text" id="pg_nopol" required class="form-input py-2" placeholder="B 1234 XYZ"></div>
+                  <div><label class="form-label text-xs">Driver</label><input type="text" id="pg_driver" required class="form-input py-2"></div>
+                  <div><label class="form-label text-xs">Brand</label><input type="text" id="pg_brand" class="form-input py-2"></div>
+                  <div><label class="form-label text-xs">Tujuan</label><input type="text" id="pg_tujuan" required class="form-input py-2"></div>
+                  <div><label class="form-label text-xs">Qty</label><input type="number" id="pg_qty" required min="1" class="form-input py-2"></div>
+                  <div><label class="form-label text-xs">Koli</label><input type="number" id="pg_koli" required min="1" class="form-input py-2"></div>
+                  <div><label class="form-label text-xs">Seal / Resi</label><input type="text" id="pg_seal" class="form-input py-2"></div>
+                  <div class="col-span-full flex justify-end mt-2">
+                    <button type="button" id="btnSubmitPengirimanTemp" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow">Tambah ke List Sementara</button>
+                  </div>
+                </form>
+                
+                <!-- Tabel Sementara Pengiriman -->
+                <div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h4 class="text-sm font-bold mb-3 text-gray-700 dark:text-gray-300">Data Sementara (Belum Disimpan)</h4>
+                  <div class="overflow-x-auto max-h-60 border border-gray-200 dark:border-gray-700 rounded">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                      <thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10">
+                        <tr><th class="p-2">Tanggal</th><th class="p-2">IN / OUT</th><th class="p-2">Nopol</th><th class="p-2">Driver</th><th class="p-2">Brand</th><th class="p-2">Tujuan</th><th class="p-2">Qty</th><th class="p-2">Koli</th><th class="p-2">Seal / Resi</th><th class="p-2 text-center">Aksi</th></tr>
+                      </thead>
+                      <tbody id="tempPengirimanTableBody"></tbody>
+                    </table>
+                  </div>
+                  <div class="flex justify-between items-center mt-4">
+                      <div class="text-sm font-bold text-gray-700 dark:text-gray-300 flex gap-4">
+                          <span>Total Qty: <span id="tempPengirimanTotalQty">0</span></span>
+                          <span>Total Koli: <span id="tempPengirimanTotalKoli">0</span></span>
+                      </div>
+                      <button id="btnSimpanPengirimanFinal" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow disabled:opacity-50" disabled>Catat Pengiriman ke Database</button>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+            
+            <!-- Tabel Mentah -->
+            <div id="panelTablePengiriman" class="panel">
+              <div class="panel-header"><h3 class="panel-title text-sm">Data Pengiriman</h3></div>
+              <div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                  <thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10">
+                      <tr><th class="p-3">Tanggal</th><th class="p-3">IN / OUT</th><th class="p-3">Nopol</th><th class="p-3">Brand</th><th class="p-3">Tujuan</th><th class="p-3">Qty</th><th class="p-3">Koli</th><th class="p-3">Seal / Resi</th><th class="p-3">Driver</th><th class="p-3 text-center">Aksi</th></tr>
+                    </thead>
+                  <tbody id="pengirimanTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: USERS -->
+        <div id="tab-users" class="tab-content hidden animate-slide-in">
+          <div class="panel">
+            <div class="panel-header"><h3 class="panel-title text-sm">Data Users</h3></div>
+            <div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar">
+              <table class="w-full text-left border-collapse whitespace-nowrap">
+                <thead class="sticky top-0 z-10">
+                  <tr class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider">
+                    <th class="px-4 py-4 font-bold">ID User</th>
+                    <th class="px-4 py-4 font-bold">Nama</th>
+                    <th class="px-4 py-4 font-bold">Email</th>
+                    <th class="px-4 py-4 font-bold">Role</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-[#2b2b40] text-sm bg-white dark:bg-[#1e1e2d]">
+                  <tr>
+                    <td class="px-4 py-4">2021-1515</td>
+                    <td class="px-4 py-4">Fadly</td>
+                    <td class="px-4 py-4">fadli.alamsyah@lestarijayaraya.com</td>
+                    <td class="px-4 py-4">SPV</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Modal Master -->
+    <div id="modalMaster" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden opacity-0 transition-opacity">
+      <div class="bg-white dark:bg-[#1e1e2d] rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform overflow-hidden">
+        <div class="p-3 flex justify-between items-center bg-gray-50 dark:bg-[#151521]">
+          <h3 class="text-lg font-bold">Tambah Master Data</h3>
+          <button id="btnCloseModal" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="p-6">
+          <form id="masterForm" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div><label class="form-label">Barcode</label><input type="text" id="mst_barcode" required class="form-input"></div>
+              <div><label class="form-label">SKU</label><input type="text" id="mst_sku" class="form-input"></div>
+              <div class="col-span-2"><label class="form-label">Description</label><input type="text" id="mst_desc" required class="form-input"></div>
+              <div><label class="form-label">Color</label><input type="text" id="mst_color" class="form-input"></div>
+              <div><label class="form-label">Size</label><input type="text" id="mst_size" class="form-input"></div>
+              <div><label class="form-label">Base Price</label><input type="text" id="mst_price" class="form-input"></div>
+              <div><label class="form-label">Category</label><input type="text" id="mst_category" class="form-input"></div>
+              <div><label class="form-label">Brand</label><input type="text" id="mst_brand" class="form-input"></div>
+              <div><label class="form-label">Age/Gender</label><input type="text" id="mst_age_gender" class="form-input"></div>
+              <div class="col-span-2"><label class="form-label">Season</label><input type="text" id="mst_season" class="form-input"></div>
+            </div>
+            <div class="pt-4 flex justify-end"><button type="submit" class="bg-[#0a4d3c] text-white px-6 py-2 rounded-lg font-bold">Simpan</button></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+    <!-- Edit Modal -->
+  <div id="editModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity">
+    <div class="bg-white dark:bg-[#1e1e2d] w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="flex justify-between items-center p-6 border-b border-gray-100 dark:border-[#2b2b40]">
+        <h3 class="text-xl font-bold text-gray-800 dark:text-white" id="editModalTitle">Edit Data</h3>
+        <button id="btnClosedEditModal" class="text-gray-400 hover:text-red-500 transition-colors">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+      </div>
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+        <form id="editForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Dynamic inputs will be inserted here by JS -->
+        </form>
+      </div>
+      <div class="p-6 border-t border-gray-100 dark:border-[#2b2b40] flex justify-end gap-3 bg-gray-50 dark:bg-[#151521]">
+        <button type="button" id="btnCancelEdit" class="px-5 py-2.5 rounded-xl font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-[#2b2b40] border border-gray-200 dark:border-transparent hover:bg-gray-50 dark:hover:bg-[#323248] transition-colors">Batal</button>
+        <button type="button" id="btnSaveEdit" class="px-5 py-2.5 rounded-xl font-semibold text-white bg-[#0a4d3c] hover:bg-[#083a2d] transition-colors flex items-center gap-2">
+          <i data-lucide="save" class="w-4 h-4"></i> Simpan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script_v3.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
