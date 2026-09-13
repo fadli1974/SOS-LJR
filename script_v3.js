@@ -1779,3 +1779,67 @@ setTimeout(() => {
             }
         }).catch(e => console.error(e));
 }, 1000);
+
+
+// ==========================================
+// CAMERA BARCODE SCANNER LOGIC (MOBILE ONLY)
+// ==========================================
+let html5QrCode = null;
+
+const btnStartCamera = document.getElementById('btnStartCamera');
+const btnStopCamera = document.getElementById('btnStopCamera');
+const cameraContainer = document.getElementById('cameraContainer');
+const inBarcode = document.getElementById('in_barcode');
+
+if(btnStartCamera) {
+    btnStartCamera.addEventListener('click', () => {
+        cameraContainer.classList.remove('hidden');
+        if(!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+        
+        html5QrCode.start(
+            { facingMode: "environment" }, // Rear camera
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 150 } // Rectangular box for barcodes
+            },
+            (decodedText, decodedResult) => {
+                // On Success
+                inBarcode.value = decodedText;
+                
+                // Play a beep sound
+                try {
+                    const audio = new Audio('https://www.soundjay.com/buttons/beep-07a.mp3');
+                    audio.play();
+                } catch(e) {}
+                
+                html5QrCode.stop().then(() => {
+                    cameraContainer.classList.add('hidden');
+                    // Automatically trigger the lookup logic in patch_scan_col.js / patch_form_submit.js
+                    // By dispatching an Enter keydown or input event
+                    inBarcode.dispatchEvent(new Event('input', { bubbles: true }));
+                    inBarcode.focus();
+                });
+            },
+            (errorMessage) => {
+                // Ignore parse errors (happens constantly while scanning)
+            }
+        ).catch((err) => {
+            alert("Gagal mengakses kamera. Pastikan Anda memberikan izin kamera! Error: " + err);
+            cameraContainer.classList.add('hidden');
+        });
+    });
+}
+
+if(btnStopCamera) {
+    btnStopCamera.addEventListener('click', () => {
+        if(html5QrCode) {
+            html5QrCode.stop().then(() => {
+                cameraContainer.classList.add('hidden');
+            }).catch(err => {
+                cameraContainer.classList.add('hidden');
+            });
+        }
+    });
+}
