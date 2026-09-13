@@ -607,15 +607,32 @@ async function fetchSheet(sheetName, tbodyId, renderFunc) {
     if(syncBadge) syncBadge.classList.remove('hidden');
     
     try {
-      const response = await fetch(SCRIPT_URL +"?sheet=" + sheetName +"&limit=100"); // Add limit=100 so it loads fast!
-      const text = await response.text();
+      let text = '';
+      let success = false;
+      
+      // Auto-retry up to 3 times for Google Apps Script intermittent errors (502 HTML pages)
+      for(let i=0; i<3; i++) {
+          try {
+              const response = await fetch(SCRIPT_URL +"?sheet=" + sheetName);
+              text = await response.text();
+              if(!text.includes('<!DOCTYPE html>')) {
+                  success = true;
+                  break;
+              }
+              // If it's HTML, wait 1 second and retry
+              await new Promise(r => setTimeout(r, 1000));
+          } catch(err) {
+              await new Promise(r => setTimeout(r, 1000));
+          }
+      }
       
       if(syncBadge) syncBadge.classList.add('hidden');
       
-      if(text.includes('<!DOCTYPE html>')) {
+      if(!success || text.includes('<!DOCTYPE html>')) {
           const errHtml = `ERROR: Google memblokir akses atau URL berubah. Pastikan di Apps Script Anda sudah mengatur 'Siapa Saja (Anyone)' pada hak akses, dan JANGAN mengubah SCRIPT_URL.`;
+          // Only show alert if we really failed after retries and we don't have cached data
           if(tbody && !localStorage.getItem(cacheKey)) tbody.innerHTML = `<tr><td colspan="20" class="p-6 text-center text-red-600 font-bold">${errHtml}</td></tr>`;
-          else alert(errHtml);
+          else if(!localStorage.getItem(cacheKey)) alert(errHtml);
           return [];
       }
       
