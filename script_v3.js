@@ -28,6 +28,9 @@ const pageTitle = document.getElementById('pageTitle');
 navItems.forEach(item => {
   item.addEventListener('click', (e) => {
     e.preventDefault();
+    if (window.innerWidth < 1024) {
+        document.getElementById('sidebar').classList.add('-ml-64');
+    }
     navItems.forEach(n => n.classList.remove('active', 'bg-white/10', 'border-l-4', 'border-yellow-400'));
     item.classList.add('active', 'bg-white/10', 'border-l-4', 'border-yellow-400');
 
@@ -1646,6 +1649,9 @@ const btnToggleSidebar = document.getElementById('btnToggleSidebar');
 const sidebar = document.getElementById('sidebar');
 if (btnToggleSidebar && sidebar) {
     btnToggleSidebar.addEventListener('click', () => {
+        if (window.innerWidth >= 1024) {
+            sidebar.classList.toggle('lg:ml-0');
+        }
         sidebar.classList.toggle('-ml-64');
     });
 }
