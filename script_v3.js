@@ -1816,7 +1816,7 @@ try {
                         html5QrCode.stop().then(() => {
                             if(cameraContainer) cameraContainer.classList.add('hidden');
                             if(currentBarcodeTarget) {
-                                currentBarcodeTarget.dispatchEvent(new Event('input', { bubbles: true }));
+                                currentBarcodeTarget.dispatchEvent(new Event('change', { bubbles: true }));
                                 currentBarcodeTarget.focus();
                             }
                         });
