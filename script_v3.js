@@ -18,6 +18,11 @@ document.getElementById('btnThemeToggle').addEventListener('click', () => {
   document.getElementById('themeIcon').setAttribute('data-lucide', isDark ? 'sun' : 'moon');
   document.getElementById('themeText').textContent = isDark ? 'Mode Terang' : 'Mode Redup';
   lucide.createIcons();
+  
+  // Auto hide sidebar on mobile
+  if (window.innerWidth < 1024) {
+      document.getElementById('sidebar').classList.add('-ml-64');
+  }
 });
 
 // Tab Navigation
@@ -477,12 +482,22 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       // Fallback ini hanya akan jalan jika spreadsheet benar-benar tidak bisa diakses
       let fallbackTriggered = false;
 
-      // 2. Cek Dinamis ke Tab"Users" di Google Sheets
-      const response = await fetch(SCRIPT_URL +"?sheet=Users");
-      const text = await response.text();
+      // 2. Cek Dinamis ke Tab "Users" menggunakan Prefetch (Instan)
+      let usersData = null;
+      if (preloadedUsers) {
+          usersData = preloadedUsers;
+      } else {
+          if(usersFetchPromise) await usersFetchPromise;
+          if(preloadedUsers) {
+              usersData = preloadedUsers;
+          } else {
+              const response = await fetch(SCRIPT_URL +"?sheet=Users");
+              const text = await response.text();
+              if(!text.startsWith('Error:')) usersData = JSON.parse(text);
+          }
+      }
       
-      if(!text.startsWith('Error:')) {
-          const usersData = JSON.parse(text);
+      if(usersData) {
           
           const validUser = usersData.find(u => {
              const values = Object.values(u).map(v => String(v).toLowerCase());
