@@ -3,6 +3,27 @@
 // ==========================================
 const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbwt6TqdLCn-xl-Z2LByWr_hXwR9TrOGcG773XuAP1tGAmALHmFiVIJjyVfBcTGfK5eb/exec";
 
+let preloadedUsers = null;
+let usersFetchPromise = null;
+
+// Initialize as a global function so it can be called safely
+window.preloadUsers = function() {
+    try {
+        if(typeof SCRIPT_URL !== 'undefined') {
+            usersFetchPromise = fetch(SCRIPT_URL + "?sheet=Users")
+                .then(res => res.text())
+                .then(text => {
+                    if (!text.startsWith('Error:')) {
+                        preloadedUsers = JSON.parse(text);
+                    }
+                })
+                .catch(err => console.error("Prefetch error", err));
+        }
+    } catch(e) {}
+};
+window.preloadUsers();
+
+
 // ==========================================
 // 2. UI & STATE MANAGEMENT
 // ==========================================
