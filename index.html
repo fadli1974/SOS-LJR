@@ -18,6 +18,18 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body class="bg-gray-50 dark:bg-[#151521] text-gray-800 dark:text-[#ffffff] h-screen overflow-hidden flex font-sans">
+
+<div id="cameraContainer" class="hidden fixed z-[9999] inset-0 bg-black/80 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#1e1e2d] w-full max-w-sm mx-auto rounded-xl overflow-hidden shadow-2xl border-2 border-indigo-500 flex flex-col">
+        <div class="p-4 bg-indigo-600 text-white font-bold text-center flex justify-between items-center">
+            <span>Scan Barcode</span>
+            <i data-lucide="camera" class="w-5 h-5"></i>
+        </div>
+        <div id="reader" width="100%" class="bg-black min-h-[250px]"></div>
+        <button type="button" id="btnStopCamera" class="w-full bg-red-600 text-white py-4 font-bold hover:bg-red-700 text-lg uppercase tracking-wider">Tutup Kamera</button>
+    </div>
+</div>
+
   
   <!-- Login Container -->
   <div id="loginContainer" class="flex w-full h-screen items-center justify-center bg-gray-50 dark:bg-[#0d0d12] z-50 transition-colors duration-300">
@@ -383,7 +395,7 @@
     <label class="form-label text-xs">Scan Barcode</label>
     <div class="flex gap-2">
         <input type="text" id="in_barcode" required class="form-input py-2 w-full">
-        <button type="button" id="btnStartCamera" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg md:hidden flex items-center justify-center shadow-md shrink-0">
+        <button type="button" data-target="in_barcode" class="btnStartCamera bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg md:hidden flex items-center justify-center shadow-md shrink-0">
             <i data-lucide="camera" class="w-5 h-5"></i>
         </button>
     </div>
@@ -433,7 +445,15 @@
             <div class="p-4">
               <form id="outbondForm" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 <input type="hidden" id="out_type" value="OUTBOND">
-                <div><label class="form-label text-xs">Scan Barcode</label><input type="text" id="out_barcode" required class="form-input py-2"></div>
+                <div>
+    <label class="form-label text-xs">Scan Barcode</label>
+    <div class="flex gap-2">
+        <input type="text" id="out_barcode" required class="form-input py-2 w-full">
+        <button type="button" data-target="out_barcode" class="btnStartCamera bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg md:hidden flex items-center justify-center shadow-md shrink-0">
+            <i data-lucide="camera" class="w-5 h-5"></i>
+        </button>
+    </div>
+</div>
                 <div><label class="form-label text-xs">Brand</label><input type="text" id="out_brand" class="form-input py-2"></div>
                 <div><label class="form-label text-xs">SKU</label><input type="text" id="out_sku" class="form-input py-2"></div>
                 <div class="md:col-span-2"><label class="form-label text-xs">Description</label><input type="text" id="out_desc" class="form-input py-2"></div>
@@ -478,7 +498,15 @@
             <div class="p-4">
               <form id="returnForm" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 <input type="hidden" id="ret_type" value="RETURN">
-                <div><label class="form-label text-xs">Scan Barcode</label><input type="text" id="ret_barcode" required class="form-input py-2"></div>
+                <div>
+    <label class="form-label text-xs">Scan Barcode</label>
+    <div class="flex gap-2">
+        <input type="text" id="ret_barcode" required class="form-input py-2 w-full">
+        <button type="button" data-target="ret_barcode" class="btnStartCamera bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg md:hidden flex items-center justify-center shadow-md shrink-0">
+            <i data-lucide="camera" class="w-5 h-5"></i>
+        </button>
+    </div>
+</div>
                 <div><label class="form-label text-xs">Brand</label><input type="text" id="ret_brand" class="form-input py-2"></div>
                 <div><label class="form-label text-xs">SKU</label><input type="text" id="ret_sku" class="form-input py-2"></div>
                 <div class="md:col-span-2"><label class="form-label text-xs">Description</label><input type="text" id="ret_desc" class="form-input py-2"></div>
@@ -657,7 +685,7 @@
     </div>
   </div>
 
-  <script src="script_v3.js?v=1789312896191"></script>
+  <script src="script_v3.js?v=1789313883212"></script>
 </body>
 </html>
 
