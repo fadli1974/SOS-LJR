@@ -1809,8 +1809,20 @@ try {
                             currentBarcodeTarget.value = decodedText;
                         }
                         try {
-                            const audio = new Audio('https://www.soundjay.com/buttons/beep-07a.mp3');
-                            audio.play();
+                            const AudioContext = window.AudioContext || window.webkitAudioContext;
+                            if (AudioContext) {
+                                const ctx = new AudioContext();
+                                const oscillator = ctx.createOscillator();
+                                const gainNode = ctx.createGain();
+                                oscillator.type = 'sine';
+                                oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                                gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
+                                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                                oscillator.connect(gainNode);
+                                gainNode.connect(ctx.destination);
+                                oscillator.start(ctx.currentTime);
+                                oscillator.stop(ctx.currentTime + 0.1);
+                            }
                         } catch(e) {}
                         
                         html5QrCode.stop().then(() => {
