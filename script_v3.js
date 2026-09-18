@@ -1887,6 +1887,13 @@ document.addEventListener('DOMContentLoaded', () => {
         fileUploadPack.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if(!file) return;
+            
+            // Validasi ukuran file (Max 5MB)
+            if(file.size > 5 * 1024 * 1024) {
+                Swal.fire('Error', 'Ukuran file terlalu besar! Maksimal 5MB.', 'error');
+                fileUploadPack.value = '';
+                return;
+            }
 
             const reader = new FileReader();
             reader.onload = async function(evt) {
@@ -1896,14 +1903,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnUploadPack.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Uploading (Super Fast Mode)...';
                 
                 try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 detik timeout
+                    
                     const res = await fetch(SCRIPT_URL, {
                         method: 'POST',
                         body: JSON.stringify({
                             action: 'upload_csv_raw',
                             sheet: 'Packing List',
                             payload: text
-                        })
+                        }),
+                        signal: controller.signal
                     });
+                    clearTimeout(timeoutId);
                     const out = await res.json();
                     if(out.status === 'success') {
                         Swal.fire('Berhasil', out.message || 'Data berhasil diupload!', 'success');
