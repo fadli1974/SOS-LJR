@@ -363,7 +363,8 @@ const TEMPLATE_HEADERS = {
    'tab-inbond':"Tanggal,Scan,Brand,Barcode,SKU,Description,Colour,Size,Price,Qty,Bin/Box,Inventory Transfer Number,ETP Number,From Location",
    'tab-outbond':"Tanggal,Scan,Brand,Barcode,SKU,Description,Colour,Size,Price,Qty,Bin/Box,Inventory Transfer Number,ETP Number,To Location",
    'tab-return':"Tanggal,Scan,Brand,Barcode,SKU,Description,Colour,Size,Price,Qty,Bin/Box,Inventory Transfer Number,ETP Number,From Location,To Location",
-   'tab-pengiriman':"Tanggal,IN / OUT,Nopol,Brand,Tujuan,Qty,Koli,Seal / Resi,Driver"
+   'tab-pengiriman':"Tanggal,IN / OUT,Nopol,Brand,Tujuan,Qty,Koli,Seal / Resi,Driver",
+   'tab-packing-list':"Tanggal,Scan,Brand,Barcode,SKU,Description,Colour,Size,Price,Qty,Bin/Box,Inventory Transfer Number,From Location,To Location"
 };
 
 document.getElementById('btnDownloadTemplate')?.addEventListener('click', () => {
@@ -1868,3 +1869,106 @@ try {
 } catch(e) {
     console.error("Camera init error: ", e);
 }
+
+
+// ==========================================
+// PACKING LIST CUSTOM BUTTONS
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const btnUploadPack = document.getElementById('btnUploadPackingList');
+    const fileUploadPack = document.getElementById('fileUploadPackingList');
+    const btnDownloadPack = document.getElementById('btnDownloadPackingList');
+
+    if(btnUploadPack && fileUploadPack) {
+        btnUploadPack.addEventListener('click', () => {
+            fileUploadPack.click();
+        });
+
+        fileUploadPack.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                const text = evt.target.result;
+                const rows = text.split('\n').filter(r => r.trim() !== '');
+                if(rows.length < 2) return alert("File CSV kosong atau tidak valid.");
+                
+                const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                let payload = [];
+                for(let i=1; i<rows.length; i++) {
+                    const cols = rows[i].split(',').map(c => c.trim().replace(/"/g, ''));
+                    let obj = {};
+                    headers.forEach((h, idx) => {
+                        obj[h] = cols[idx] || "";
+                    });
+                    payload.push(obj);
+                }
+
+                btnUploadPack.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Uploading...';
+                
+                try {
+                    const res = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            action: 'upload_csv',
+                            sheet: 'Packing List',
+                            payload: payload
+                        })
+                    });
+                    const out = await res.json();
+                    if(out.status === 'success') {
+                        Swal.fire('Berhasil', `${payload.length} data berhasil diupload ke Packing List!`, 'success');
+                        if(typeof loadDataForTab === 'function') loadDataForTab('Packing List');
+                    } else {
+                        Swal.fire('Error', out.message || 'Gagal upload', 'error');
+                    }
+                } catch(err) {
+                    Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+                }
+                
+                btnUploadPack.innerHTML = '<i data-lucide="upload-cloud" class="w-6 h-6 mr-3"></i> Upload Data Packing List';
+                if(window.lucide) window.lucide.createIcons();
+                fileUploadPack.value = ''; // reset
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    if(btnDownloadPack) {
+        btnDownloadPack.addEventListener('click', () => {
+            Swal.fire({
+                title: 'Download & Auto-Assign Bin/Box',
+                text: "Sistem akan menghitung stok dan meng-assign Bin/Box otomatis ke file Packing List yang didownload. Lanjutkan?",
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Download',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const ori = btnDownloadPack.innerHTML;
+                    btnDownloadPack.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Memproses...';
+                    btnDownloadPack.disabled = true;
+                    
+                    // Gunakan window.location atau a.click() untuk mendownload file dari GET request
+                    const downloadUrl = `${SCRIPT_URL}?action=download_packing_list&sheet=Packing List`;
+                    
+                    // Kita buat invisible iframe atau a tag
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.target = '_blank';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    setTimeout(() => {
+                        btnDownloadPack.innerHTML = ori;
+                        btnDownloadPack.disabled = false;
+                        if(window.lucide) window.lucide.createIcons();
+                        Swal.fire('Selesai', 'File sedang didownload.', 'success');
+                    }, 3000);
+                }
+            });
+        });
+    }
+});

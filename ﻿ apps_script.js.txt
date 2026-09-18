@@ -1,4 +1,5 @@
 ﻿// apps_script.js
+﻿// KODE INI HARUS DI-COPY PASTE KE GOOGLE APPS SCRIPT (UPDATE VERSI CEPAT)
 function doGet(e) {
   var sheetName = e.parameter.sheet;
   var action = e.parameter.action;

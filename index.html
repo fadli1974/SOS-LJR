@@ -551,6 +551,19 @@
         <!-- TAB: PACKING LIST -->
         <div id="tab-packing-list" class="tab-content hidden animate-fade-in pb-20 sm:pb-0">
           
+          <!-- TOMBOL UPLOAD & DOWNLOAD PACKING LIST -->
+          <div class="flex flex-col sm:flex-row gap-4 mb-6">
+              <button id="btnUploadPackingList" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl shadow-lg flex items-center justify-center font-bold text-lg transition-transform transform hover:scale-[1.02]">
+                  <i data-lucide="upload-cloud" class="w-6 h-6 mr-3"></i> Upload Data Packing List
+              </button>
+              <button id="btnDownloadPackingList" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl shadow-lg flex items-center justify-center font-bold text-lg transition-transform transform hover:scale-[1.02]">
+                  <i data-lucide="download-cloud" class="w-6 h-6 mr-3"></i> Download Packing List (Auto Bin/Box)
+              </button>
+          </div>
+          
+          <input type="file" id="fileUploadPackingList" class="hidden" accept=".csv">
+          
+          
           <div id="panelFormPackingList" class="panel mb-6 hidden">
             <div class="panel-header"><h3 class="panel-title text-sm">Form Input Packing List (Penyimpanan Sementara)</h3></div>
             <div class="p-4">
@@ -773,7 +786,7 @@
     </div>
   </div>
 
-  <script src="script_v3.js?v=1789725691934"></script>
+  <script src="script_v3.js?v=1789726714620"></script>
 </body>
 </html>
 
