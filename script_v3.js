@@ -1891,34 +1891,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const reader = new FileReader();
             reader.onload = async function(evt) {
                 const text = evt.target.result;
-                const rows = text.split('\n').filter(r => r.trim() !== '');
-                if(rows.length < 2) return alert("File CSV kosong atau tidak valid.");
-                
-                const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
-                let payload = [];
-                for(let i=1; i<rows.length; i++) {
-                    const cols = rows[i].split(',').map(c => c.trim().replace(/"/g, ''));
-                    let obj = {};
-                    headers.forEach((h, idx) => {
-                        obj[h] = cols[idx] || "";
-                    });
-                    payload.push(obj);
-                }
+                if(!text || text.trim() === '') return alert("File CSV kosong atau tidak valid.");
 
-                btnUploadPack.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Uploading...';
+                btnUploadPack.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Uploading (Super Fast Mode)...';
                 
                 try {
                     const res = await fetch(SCRIPT_URL, {
                         method: 'POST',
                         body: JSON.stringify({
-                            action: 'upload_csv',
+                            action: 'upload_csv_raw',
                             sheet: 'Packing List',
-                            payload: payload
+                            payload: text
                         })
                     });
                     const out = await res.json();
                     if(out.status === 'success') {
-                        Swal.fire('Berhasil', `${payload.length} data berhasil diupload ke Packing List!`, 'success');
+                        Swal.fire('Berhasil', out.message || 'Data berhasil diupload!', 'success');
                         if(typeof loadDataForTab === 'function') loadDataForTab('Packing List');
                     } else {
                         Swal.fire('Error', out.message || 'Gagal upload', 'error');
