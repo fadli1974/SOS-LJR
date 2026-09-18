@@ -1,0 +1,988 @@
+﻿// apps_script.js
+function doGet(e) {
+  var sheetName = e.parameter.sheet;
+  var action = e.parameter.action;
+  if(!sheetName) return ContentService.createTextOutput("Error: Sheet tidak ditentukan");
+  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(sheetName);
+  if(!sheet) return ContentService.createTextOutput("Error: Sheet '" + sheetName + "' tidak ditemukan");
+  
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  
+  // FITUR DOWNLOAD CSV LANGSUNG DARI SPREADSHEET (SEMUA DATA)
+  if(action === 'download_csv') {
+      var data = sheet.getDataRange().getDisplayValues();
+      var csvContent = "";
+      for (var r = 0; r < data.length; r++) {
+          var rowString = data[r].map(function(cell) {
+              var str = String(cell).replace(/"/g, '""');
+              return '"' + str + '"';
+          }).join(",");
+          csvContent += rowString + "\n";
+      }
+      return ContentService.createTextOutput(csvContent)
+          .setMimeType(ContentService.MimeType.CSV)
+          .downloadAsFile("Data_" + sheetName + ".csv");
+  }
+  
+  if(lastRow < 1) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+  
+  // FITUR PENCARIAN HEADER OTOMATIS:
+  // Cek apakah baris 1 adalah header. Jika kosong, berarti header ada di baris 2.
+  var headerRowIdx = 1;
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  if (!headers[0] && !headers[1] && lastRow >= 2) {
+      headerRowIdx = 2;
+      headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+  }
+  
+  // FITUR PENCARIAN SUMMARY KILAT + HITUNG TOTAL QTY PER BRAND + FILTER TANGGAL
+  if(action === 'summary') {
+    var startDateStr = e.parameter.start_date;
+    var endDateStr = e.parameter.end_date;
+    var startD = startDateStr ? new Date(startDateStr + "T00:00:00") : null;
+    var endD = endDateStr ? new Date(endDateStr + "T00:00:00") : null;
+    if(endD) endD.setHours(23, 59, 59, 999);
+    
+    // Fungsi untuk mengubah string "31/8/2026, 00.18.36" menjadi Date yg valid
+    function parseDateCustom(dateVal) {
+        if(!dateVal) return null;
+        var dObj = new Date(dateVal);
+        if(dObj.toString() !== "Invalid Date" && dObj.getFullYear() > 2000) return dObj;
+        var str = dateVal.toString().trim();
+        var datePart = str.split(",")[0].split(" ")[0].trim(); 
+        var dp = datePart.split("/"); // Asumsi format DD/MM/YYYY
+        if(dp.length === 3) {
+            var day = parseInt(dp[0], 10);
+            var month = parseInt(dp[1], 10) - 1;
+            var year = parseInt(dp[2], 10);
+            if(year < 100) year += 2000;
+            var pd = new Date(year, month, day);
+            if(pd.toString() !== "Invalid Date") return pd;
+        }
+        var dp2 = datePart.split("-");
+        if(dp2.length === 3) {
+            var pd2 = new Date(parseInt(dp2[0]), parseInt(dp2[1])-1, parseInt(dp2[2]));
+            if(pd2.toString() !== "Invalid Date") return pd2;
+        }
+        return null;
+    }
+    
+    var countObj = {};
+    var sheets = ['Inbond', 'Outbond', 'Return', 'Inventory', 'Pengiriman'];
+    for(var k=0; k<sheets.length; k++) {
+       var sName = sheets[k];
+       var s = ss.getSheetByName(sName);
+       if(s) {
+           var lr = s.getLastRow();
+           var lc = s.getLastColumn();
+           countObj[sName.toLowerCase()] = Math.max(0, lr - 1); 
+           
+           if(lr > 1 && lc > 0) {
+               var headersArray = s.getRange(1, 1, 2, lc).getValues();
+               var hRow = (headersArray[1][0] === "SCAN" || headersArray[1][1] === "BRAND" || headersArray[1].indexOf("Barcode") !== -1) ? 2 : 1;
+               var headerArr = headersArray[hRow-1].map(function(x){ return x.toString().toUpperCase().trim(); });
+               
+               var targetCol = (sName === 'Inventory') ? "STOCK" : "QTY";
+               var colIdx = headerArr.indexOf(targetCol);
+               var brandIdx = headerArr.indexOf("BRAND");
+               
+               var dateIdx = headerArr.indexOf("TANGGAL");
+               if(dateIdx === -1) dateIdx = headerArr.indexOf("WAKTU");
+               if(dateIdx === -1) dateIdx = headerArr.indexOf("DATE");
+               if(dateIdx === -1) dateIdx = headerArr.indexOf("SCAN"); // PENTING: Outbond/Return pakai "SCAN"
+               
+                                if(colIdx !== -1) {
+                     var nopolIdx = headerArr.indexOf("NOPOL");
+                       var inOutIdx = headerArr.indexOf("IN / OUT");
+                       if(inOutIdx === -1) inOutIdx = headerArr.indexOf("IN/OUT");
+                       var sealIdx = headerArr.indexOf("SEAL / RESI");
+                       if(sealIdx === -1) sealIdx = headerArr.indexOf("SEAL/RESI");
+                       if(sealIdx === -1) sealIdx = headerArr.indexOf("SEAL");
+                       var inOutIdx = headerArr.indexOf("IN / OUT");
+                       if(inOutIdx === -1) inOutIdx = headerArr.indexOf("IN/OUT");
+                     var limitRows = Math.min(2000, lr - hRow);
+                     var startRow = lr - limitRows + 1;
+                     var total = 0;
+                     var filteredTotal = 0;
+                     
+                     // 1. Dapatkan GRAND TOTAL secara kilat dengan HANYA mengambil kolom Qty (atau Stock)!
+                     var allQtyData = s.getRange(hRow + 1, colIdx + 1, lr - hRow, 1).getValues();
+                     for(var i=0; i<allQtyData.length; i++) {
+                         total += parseFloat(allQtyData[i][0]) || 0;
+                     }
+                     countObj[sName.toLowerCase() + "_sum"] = total;
+                     
+                     // 2. Jika difilter tanggal (Dashboard), gunakan data tanggal utk menghitung total spesifik
+                     // (Batas 3000 baris agar tidak timeout!)
+                     var maxRowsForFilter = Math.min(3000, lr - hRow);
+                     var filterStartRow = lr - maxRowsForFilter + 1;
+                     
+                     if (maxRowsForFilter > 0) {
+                         var valsTrend = s.getRange(filterStartRow, colIdx + 1, maxRowsForFilter, 1).getValues();
+                         var dateData = null;
+                         var brandData = null;
+                         var nopolData = null;
+                           var inOutData = null;
+                           var sealData = null;
+                         
+                         if(sName !== 'Inventory' && dateIdx !== -1) {
+                             dateData = s.getRange(filterStartRow, dateIdx + 1, maxRowsForFilter, 1).getValues();
+                         }
+                         if(sName === 'Inventory' && brandIdx !== -1) {
+                             brandData = s.getRange(filterStartRow, brandIdx + 1, maxRowsForFilter, 1).getValues();
+                         }
+                         if (sName === 'Pengiriman') {
+                               if(nopolIdx !== -1) nopolData = s.getRange(filterStartRow, nopolIdx + 1, maxRowsForFilter, 1).getValues();
+                               if(inOutIdx !== -1) inOutData = s.getRange(filterStartRow, inOutIdx + 1, maxRowsForFilter, 1).getValues();
+                               if(sealIdx !== -1) sealData = s.getRange(filterStartRow, sealIdx + 1, maxRowsForFilter, 1).getValues();
+                           }
+                         
+                         var trendMap = {};
+                         var brandTotals = {};
+                         var uniqueNopolsOut = {};
+                           var uniqueNopolsIn = {};
+                           var nopolOutCount = 0;
+                           var nopolInCount = 0;
+                         
+                         for(var i=0; i<maxRowsForFilter; i++) {
+                             var validDate = true;
+                             var rowDate = null;
+                             if(dateData && dateData[i][0]) {
+                                 rowDate = parseDateCustom(dateData[i][0]);
+                                 if(rowDate) {
+                                     if(startD && rowDate < startD) validDate = false;
+                                     if(endD && rowDate > endD) validDate = false;
+                                 }
+                             }
+                             
+                             if(!validDate && sName !== 'Inventory') continue;
+                             
+                             var q = parseFloat(valsTrend[i][0]) || 0;
+                             filteredTotal += q;
+                             
+                             if (sName !== 'Inventory' && rowDate && validDate) {
+                                 var dStr = ('0' + rowDate.getDate()).slice(-2) + '-' + ('0' + (rowDate.getMonth() + 1)).slice(-2) + '-' + rowDate.getFullYear();
+                                 if (!trendMap[dStr]) trendMap[dStr] = 0;
+                                 if (sName !== 'Pengiriman') {
+                                     trendMap[dStr] += q;
+                                 }
+                             }
+                             
+                             if(brandData && brandData[i][0]) {
+                                 var bName = brandData[i][0].toString().trim();
+                                 if(bName !== "") {
+                                     if(!brandTotals[bName]) brandTotals[bName] = 0;
+                                     brandTotals[bName] += q;
+                                 }
+                             }
+                             
+                             if(sName === 'Pengiriman') {
+                                   var inOutType = (inOutData && inOutData[i][0]) ? inOutData[i][0].toString().trim().toUpperCase() : 'OUTBOND';
+                                   var dKey = rowDate ? rowDate.getTime() : "nodate";
+                                   
+                                   var sealRaw = (sealData && sealData[i][0]) ? sealData[i][0].toString().trim().toUpperCase() : "";
+                                   var itemsToCount = [];
+                                   
+                                   if (sealRaw !== "") {
+                                       var parts = sealRaw.split(',');
+                                       for(var p=0; p<parts.length; p++) {
+                                           var t = parts[p].trim();
+                                           if(t !== "") itemsToCount.push(t);
+                                       }
+                                   } else if (nopolData && nopolData[i][0] && nopolData[i][0].toString().trim() !== "") {
+                                       itemsToCount.push("NOPOL_" + nopolData[i][0].toString().trim().toUpperCase());
+                                   }
+                                   
+                                   // Note: filteredTotal for Pengiriman is currently Qty, which is correct for overall unit sum!
+                                   // Wait! The previous code incremented filteredTotal by 1 per unique nopol!
+                                   // Since I removed the `filteredTotal += 1` from inside the unique logic, it will now just be the Qty sum, which is what the other sheets use.
+                                   // Actually, let's keep the filteredTotal += 1 inside the unique check if it's supposed to be unit count. But wait, `countObj[sName.toLowerCase() + "_sum"]` should probably be the sum of Qty.
+                                   // The trend chart uses trendMap.
+                                   
+                                   for(var j=0; j<itemsToCount.length; j++) {
+                                       var itemVal = itemsToCount[j];
+                                       var uniqKey = itemVal + "_" + dKey;
+                                       
+                                       if(inOutType === 'INBOND') {
+                                           if(!uniqueNopolsIn[uniqKey]) {
+                                               uniqueNopolsIn[uniqKey] = true;
+                                               nopolInCount++;
+                                           }
+                                       } else {
+                                           if(!uniqueNopolsOut[uniqKey]) {
+                                               uniqueNopolsOut[uniqKey] = true;
+                                               nopolOutCount++;
+                                               if (rowDate && validDate) {
+                                                   var dStr = ('0' + rowDate.getDate()).slice(-2) + '-' + ('0' + (rowDate.getMonth() + 1)).slice(-2) + '-' + rowDate.getFullYear();
+                                                   if (!trendMap[dStr]) trendMap[dStr] = 0;
+                                                   trendMap[dStr]++;
+                                               }
+                                           }
+                                       }
+                                   }
+                               }
+                         }
+                         
+                         // Jika ada filter tanggal, timpa Total agar merefleksikan filter!
+                         if (startD || endD) {
+                             countObj[sName.toLowerCase() + "_sum"] = filteredTotal;
+                             if (sName === 'Pengiriman') {
+                                   countObj['pengiriman_unit'] = nopolOutCount;
+                                   countObj['kedatangan_unit'] = nopolInCount;
+                               }
+                         } else {
+                             // Jika tidak ada filter, unit pengiriman adalah total Nopol (dari 3000 data terakhir)
+                             if (sName === 'Pengiriman') {
+                                   countObj['pengiriman_unit'] = nopolOutCount;
+                                   countObj['kedatangan_unit'] = nopolInCount;
+                               }
+                         }
+                         
+                         if(sName !== 'Inventory') {
+                             countObj[sName.toLowerCase() + "_trend"] = trendMap;
+                         }
+                         if(sName === 'Inventory') {
+                             countObj.brand_totals = brandTotals; // Keep this for backward compatibility
+                         }
+                     }
+                 }
+           }
+       }
+    }
+    
+    function getRecentData(sheetNameStr) {
+        var s = ss.getSheetByName(sheetNameStr);
+        if(!s) return [];
+        var lr = s.getLastRow();
+        var lc = s.getLastColumn();
+        if(lr < 2) return [];
+        
+        var headVals = s.getRange(1, 1, 2, lc).getValues();
+        var hRow = (headVals[1][0] === "SCAN" || headVals[1][1] === "BRAND" || headVals[1].indexOf("Barcode") !== -1) ? 2 : 1;
+        var hdrs = headVals[hRow-1];
+        
+        var limit = 500;
+        var startRow = hRow + 1;
+        var numR = lr - hRow;
+        
+        if(numR > limit && !startD && !endD) { 
+           startRow = lr - limit + 1; 
+           numR = limit; 
+        }
+        if(numR < 1) return [];
+        
+        var dRows = s.getRange(startRow, 1, numR, lc).getValues();
+        var resultRows = [];
+        
+        for(var i=dRows.length-1; i>=0; i--) { 
+           var validDate = true;
+           var hArr = hdrs.map(function(x){ return x ? x.toString().toUpperCase().trim() : ""; });
+           var dIdx = hArr.indexOf("TANGGAL");
+           if(dIdx === -1) dIdx = hArr.indexOf("WAKTU");
+           if(dIdx === -1) dIdx = hArr.indexOf("DATE");
+           if(dIdx === -1) dIdx = hArr.indexOf("SCAN");
+           
+           if((startD || endD) && dIdx !== -1 && dRows[i][dIdx]) {
+               var rD = parseDateCustom(dRows[i][dIdx]);
+               if(rD) {
+                   if(startD && rD < startD) validDate = false;
+                   if(endD && rD > endD) validDate = false;
+               }
+           }
+           
+           if(validDate) {
+               var obj = {};
+               for(var j=0; j<hdrs.length; j++) obj[hdrs[j] ? hdrs[j].toString().trim() : "Kolom"+j] = dRows[i][j];
+               resultRows.unshift(obj);
+           }
+           if(resultRows.length >= 100) break;
+        }
+        return resultRows;
+    }
+    
+    countObj.recent_inbond = getRecentData('Inbond');
+    countObj.recent_outbond = getRecentData('Outbond');
+    countObj.recent_return = getRecentData('Return');
+    
+    return ContentService.createTextOutput(JSON.stringify(countObj)).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // FITUR PENCARIAN BARCODE (AUTOFILL CEPAT)
+  if(action === 'search') {
+    var barcodeToFind = e.parameter.barcode;
+    if(!barcodeToFind) return ContentService.createTextOutput(JSON.stringify(null)).setMimeType(ContentService.MimeType.JSON);
+    
+    var textFinder = sheet.createTextFinder(barcodeToFind).matchEntireCell(true);
+    var match = textFinder.findNext();
+    
+    if(match) {
+      var rowIndex = match.getRow();
+      var rowData = sheet.getRange(rowIndex, 1, 1, lastCol).getValues()[0];
+      var obj = {};
+      for(var j = 0; j < headers.length; j++) {
+        var key = headers[j] ? headers[j].toString().trim() : "Kolom" + j;
+        obj[key] = rowData[j];
+      }
+      obj['_row_index'] = rowIndex;
+      return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+    }
+    return ContentService.createTextOutput(JSON.stringify(null)).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  // FITUR PENCARIAN SERVER-SIDE (UNTUK TABEL BESAR)
+      var searchQuery = e.parameter.search_table;
+    if(searchQuery && searchQuery.trim() !== "") {
+        var textFinder = sheet.createTextFinder(searchQuery).matchEntireCell(false).matchCase(false);
+        var matches = textFinder.findAll();
+        var result = [];
+        var seenRows = {};
+        var searchLower = searchQuery.toLowerCase();
+        
+        // Ambil seluruh data sekali (lebih cepat daripada getRange berulang-ulang)
+        var allData = sheet.getDataRange().getValues();
+        
+        // Kita iterasi dari belakang agar hasil yang terbaru (paling bawah) muncul duluan!
+        for(var m = matches.length - 1; m >= 0; m--) {
+           var rIdx = matches[m].getRow() - 1; // index array 0-based
+           if(rIdx > headerRowIdx && !seenRows[rIdx]) {
+               seenRows[rIdx] = true;
+               var obj = {};
+               var matchInValidCol = false;
+               
+               for(var j = 0; j < headers.length; j++) {
+                 var key = headers[j] ? headers[j].toString().trim() : "";
+                 if (!key) continue; // Skip kolom tanpa header
+                 
+                 var cellVal = allData[rIdx][j];
+                 obj[key] = cellVal;
+                 
+                 // Validasi: pastikan query benar-benar ada di kolom yang ada headernya
+                 if (String(cellVal).toLowerCase().indexOf(searchLower) !== -1) {
+                     matchInValidCol = true;
+                 }
+               }
+               
+               if (matchInValidCol) {
+                   obj['_row_index'] = rIdx + 1;
+                   result.push(obj);
+               }
+           }
+           // Batasi max 100 hasil pencarian agar tetap cepat
+           if(result.length >= 100) break;
+        }
+        
+        return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+    }
+  
+  // AMBIL DATA (DEFAULT LIMIT 100 BARIS AGAR TIDAK LEMOT)
+  var startRow = headerRowIdx + 1;
+  var numRows = lastRow - headerRowIdx;
+  
+  var limit = parseInt(e.parameter.limit) || 100; // Kembalikan default limit 100
+  if (limit > 0 && numRows > limit) {
+     startRow = lastRow - limit + 1;
+     numRows = limit;
+  }
+  
+  if (numRows < 1) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+  
+  var dataRows = sheet.getRange(startRow, 1, numRows, lastCol).getValues();
+  var result = [];
+  
+  for(var i = 0; i < dataRows.length; i++) {
+    var obj = {};
+    for(var j = 0; j < headers.length; j++) {
+      var key = headers[j] ? headers[j].toString().trim() : "Kolom" + j;
+      obj[key] = dataRows[i][j];
+    }
+    obj['_row_index'] = startRow + i;
+    result.push(obj);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  try {
+    var request = JSON.parse(e.postData.contents);
+    var action = request.action;
+    var sheetName = request.sheet;
+    var payload = request.payload;
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(sheetName);
+    
+    if(!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Sheet tidak ditemukan"})).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var lastCol = sheet.getLastColumn();
+    var lastRow = sheet.getLastRow();
+    
+    var headerRowIdx = 1;
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    if (!headers[0] && !headers[1] && lastRow >= 2) {
+        headerRowIdx = 2;
+        headers = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+    }
+    
+    if (action === 'add') {
+      var newRow = [];
+      for (var i = 0; i < headers.length; i++) {
+        var headerName = headers[i].toString().trim();
+        if (payload[headerName] !== undefined) {
+          newRow.push(payload[headerName]);
+        } else {
+          newRow.push("");
+        }
+      }
+      sheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({status: "success", message: "Data berhasil ditambahkan"})).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // TAMBAHAN: FITUR UPLOAD BATCH
+    if (action === 'upload_csv') {
+      var rowsToAppend = [];
+      var barcodeQtyMap = {};
+      
+      for (var k = 0; k < payload.length; k++) {
+        var rowObj = payload[k];
+        var newRow = [];
+        for (var i = 0; i < headers.length; i++) {
+          var headerName = headers[i].toString().trim();
+          if (rowObj[headerName] !== undefined) {
+            newRow.push(rowObj[headerName]);
+          } else {
+            newRow.push("");
+          }
+        }
+        rowsToAppend.push(newRow);
+        
+        var bc = rowObj['Barcode'] || rowObj['Scan'];
+        var q = parseInt(rowObj['Qty']) || 1; 
+        if(bc) {
+            if(!barcodeQtyMap[bc]) barcodeQtyMap[bc] = 0;
+            barcodeQtyMap[bc] += q;
+        }
+      }
+      
+      if(rowsToAppend.length > 0) {
+        sheet.getRange(lastRow + 1, 1, rowsToAppend.length, headers.length).setValues(rowsToAppend);
+      }
+      
+      // Update Stock in Inventory Sheet
+      if(sheetName === 'Inbond' || sheetName === 'Outbond' || sheetName === 'Return') {
+         var invSheet = ss.getSheetByName('Inventory');
+         if(invSheet) {
+             var invLc = invSheet.getLastColumn();
+             var invLr = invSheet.getLastRow();
+             var invHeaderIdx = 1;
+             var invHeaders = invSheet.getRange(1, 1, 1, invLc).getValues()[0];
+             if(!invHeaders[0] && !invHeaders[1] && invLr >= 2) {
+                 invHeaderIdx = 2;
+                 invHeaders = invSheet.getRange(2, 1, 1, invLc).getValues()[0];
+             }
+             
+             var bcCol = invHeaders.indexOf('Barcode');
+             var inCol = invHeaders.indexOf('Inbond');
+             var outCol = invHeaders.indexOf('Outbond');
+             var retCol = invHeaders.indexOf('Return');
+             var stkCol = invHeaders.indexOf('Stock');
+             
+             if(bcCol !== -1 && stkCol !== -1) {
+                 var invData = invLr > invHeaderIdx ? invSheet.getRange(invHeaderIdx + 1, 1, invLr - invHeaderIdx, invLc).getValues() : [];
+                 var updatedData = false;
+                 
+                 for(var r = 0; r < invData.length; r++) {
+                     var b = invData[r][bcCol];
+                     if(b && barcodeQtyMap[b]) {
+                         var addedQty = barcodeQtyMap[b];
+                         
+                         var cIn = parseInt(invData[r][inCol]) || 0;
+                         var cOut = parseInt(invData[r][outCol]) || 0;
+                         var cRet = parseInt(invData[r][retCol]) || 0;
+                         
+                         if(sheetName === 'Inbond') cIn += addedQty;
+                         if(sheetName === 'Outbond') cOut += addedQty;
+                         if(sheetName === 'Return') cRet += addedQty;
+                         
+                         invData[r][inCol] = cIn;
+                         invData[r][outCol] = cOut;
+                         invData[r][retCol] = cRet;
+                         invData[r][stkCol] = cIn - cOut + cRet;
+                         
+                         delete barcodeQtyMap[b]; // mark as processed
+                         updatedData = true;
+                     }
+                 }
+                 
+                 // Write back
+                 if(updatedData && invData.length > 0) {
+                     invSheet.getRange(invHeaderIdx + 1, 1, invData.length, invLc).setValues(invData);
+                 }
+                 
+                 // Append new barcodes not found in Inventory
+                 var newInvRows = [];
+                 var bKeys = Object.keys(barcodeQtyMap);
+                 for(var bk = 0; bk < bKeys.length; bk++) {
+                     var bStr = bKeys[bk];
+                     var qNew = barcodeQtyMap[bStr];
+                     var nr = [];
+                     for(var ic=0; ic<invHeaders.length; ic++) {
+                         var hn = invHeaders[ic];
+                         if(hn === 'Barcode') nr.push(bStr);
+                         else if(hn === 'Inbond') nr.push(sheetName === 'Inbond' ? qNew : 0);
+                         else if(hn === 'Outbond') nr.push(sheetName === 'Outbond' ? qNew : 0);
+                         else if(hn === 'Return') nr.push(sheetName === 'Return' ? qNew : 0);
+                         else if(hn === 'Stock') nr.push((sheetName === 'Inbond' ? qNew : 0) - (sheetName === 'Outbond' ? qNew : 0) + (sheetName === 'Return' ? qNew : 0));
+                         else {
+                             var matchRow = payload.find(function(x){return (x['Barcode']===bStr || x['Scan']===bStr)});
+                             nr.push(matchRow && matchRow[hn] ? matchRow[hn] : "");
+                         }
+                     }
+                     newInvRows.push(nr);
+                 }
+                 if(newInvRows.length > 0) {
+                     invSheet.getRange(invSheet.getLastRow() + 1, 1, newInvRows.length, invLc).setValues(newInvRows);
+                 }
+             }
+         }
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({status: "success", message: rowsToAppend.length + " Baris berhasil diupload & Inventory otomatis di-update!"})).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    if (action === 'recalculate') {
+      try {
+        recalculateInventory();
+        return ContentService.createTextOutput(JSON.stringify({status: "success", message: "Sinkronisasi ulang Inventory berhasil!"})).setMimeType(ContentService.MimeType.JSON);
+      } catch(err) {
+        return ContentService.createTextOutput(JSON.stringify({status: "error", message: err.message})).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    if (action === 'delete_row') {
+      var rowIndex = parseInt(request.row_index);
+      if(!rowIndex || rowIndex <= headerRowIdx || rowIndex > lastRow) {
+          return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Baris tidak valid"})).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      var rowData = sheet.getRange(rowIndex, 1, 1, lastCol).getValues()[0];
+      var bcIdx = headers.indexOf('Barcode');
+      if (bcIdx === -1) bcIdx = headers.indexOf('Scan');
+      var qtyIdx = headers.indexOf('Qty');
+      
+      var oldBarcode = bcIdx !== -1 ? rowData[bcIdx] : null;
+      var oldQty = qtyIdx !== -1 ? (parseInt(rowData[qtyIdx]) || 1) : 1;
+      
+      sheet.deleteRow(rowIndex);
+      
+      if(oldBarcode && (sheetName === 'Inbond' || sheetName === 'Outbond' || sheetName === 'Return')) {
+         var invSheet = ss.getSheetByName('Inventory');
+         if(invSheet) {
+             var invLc = invSheet.getLastColumn();
+             var invLr = invSheet.getLastRow();
+             var invHeaderIdx = 1;
+             var invHeaders = invSheet.getRange(1, 1, 1, invLc).getValues()[0];
+             if(!invHeaders[0] && !invHeaders[1] && invLr >= 2) {
+                 invHeaderIdx = 2;
+                 invHeaders = invSheet.getRange(2, 1, 1, invLc).getValues()[0];
+             }
+             var invBcCol = invHeaders.indexOf('Barcode');
+             var invInCol = invHeaders.indexOf('Inbond');
+             var invOutCol = invHeaders.indexOf('Outbond');
+             var invRetCol = invHeaders.indexOf('Return');
+             var invStkCol = invHeaders.indexOf('Stock');
+             
+             if(invBcCol !== -1) {
+                 var invData = invLr > invHeaderIdx ? invSheet.getRange(invHeaderIdx + 1, 1, invLr - invHeaderIdx, invLc).getValues() : [];
+                 for(var r = 0; r < invData.length; r++) {
+                     if(invData[r][invBcCol] == oldBarcode) {
+                         var cIn = parseInt(invData[r][invInCol]) || 0;
+                         var cOut = parseInt(invData[r][invOutCol]) || 0;
+                         var cRet = parseInt(invData[r][invRetCol]) || 0;
+                         
+                         if(sheetName === 'Inbond') cIn -= oldQty;
+                         if(sheetName === 'Outbond') cOut -= oldQty;
+                         if(sheetName === 'Return') cRet -= oldQty;
+                         
+                         invData[r][invInCol] = Math.max(0, cIn);
+                         invData[r][invOutCol] = Math.max(0, cOut);
+                         invData[r][invRetCol] = Math.max(0, cRet);
+                         invData[r][invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
+                         
+                         invSheet.getRange(invHeaderIdx + 1 + r, 1, 1, invLc).setValues([invData[r]]);
+                         break;
+                     }
+                 }
+             }
+         }
+      }
+      return ContentService.createTextOutput(JSON.stringify({status: "success", message: "Data berhasil dihapus"})).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    if (action === 'edit_row') {
+      var rowIndex = parseInt(request.row_index);
+      if(!rowIndex || rowIndex <= headerRowIdx || rowIndex > lastRow) {
+          return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Baris tidak valid"})).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      var oldRowData = sheet.getRange(rowIndex, 1, 1, lastCol).getValues()[0];
+      var bcIdx = headers.indexOf('Barcode');
+      if (bcIdx === -1) bcIdx = headers.indexOf('Scan');
+      var qtyIdx = headers.indexOf('Qty');
+      var oldBarcode = bcIdx !== -1 ? oldRowData[bcIdx] : null;
+      var oldQty = qtyIdx !== -1 ? (parseInt(oldRowData[qtyIdx]) || 1) : 1;
+      
+      var newRow = [];
+      for (var i = 0; i < headers.length; i++) {
+        var headerName = headers[i].toString().trim();
+        if (payload[headerName] !== undefined) {
+          newRow.push(payload[headerName]);
+        } else {
+          newRow.push(oldRowData[i]); 
+        }
+      }
+      sheet.getRange(rowIndex, 1, 1, headers.length).setValues([newRow]);
+      
+      var newBarcode = payload['Barcode'] !== undefined ? payload['Barcode'] : (payload['Scan'] !== undefined ? payload['Scan'] : oldBarcode);
+      var newQty = parseInt(payload['Qty']);
+      if(isNaN(newQty)) newQty = oldQty;
+      
+      if(sheetName === 'Inbond' || sheetName === 'Outbond' || sheetName === 'Return') {
+         var invSheet = ss.getSheetByName('Inventory');
+         if(invSheet) {
+             var invLc = invSheet.getLastColumn();
+             var invLr = invSheet.getLastRow();
+             var invHeaderIdx = 1;
+             var invHeaders = invSheet.getRange(1, 1, 1, invLc).getValues()[0];
+             if(!invHeaders[0] && !invHeaders[1] && invLr >= 2) {
+                 invHeaderIdx = 2;
+                 invHeaders = invSheet.getRange(2, 1, 1, invLc).getValues()[0];
+             }
+             var invBcCol = invHeaders.indexOf('Barcode');
+             var invInCol = invHeaders.indexOf('Inbond');
+             var invOutCol = invHeaders.indexOf('Outbond');
+             var invRetCol = invHeaders.indexOf('Return');
+             var invStkCol = invHeaders.indexOf('Stock');
+             
+             if(invBcCol !== -1) {
+                 var invData = invLr > invHeaderIdx ? invSheet.getRange(invHeaderIdx + 1, 1, invLr - invHeaderIdx, invLc).getValues() : [];
+                 
+                 if(oldBarcode === newBarcode) {
+                     for(var r = 0; r < invData.length; r++) {
+                         if(invData[r][invBcCol] == oldBarcode) {
+                             var diff = newQty - oldQty;
+                             var cIn = parseInt(invData[r][invInCol]) || 0;
+                             var cOut = parseInt(invData[r][invOutCol]) || 0;
+                             var cRet = parseInt(invData[r][invRetCol]) || 0;
+                             
+                             if(sheetName === 'Inbond') cIn += diff;
+                             if(sheetName === 'Outbond') cOut += diff;
+                             if(sheetName === 'Return') cRet += diff;
+                             
+                             invData[r][invInCol] = Math.max(0, cIn);
+                             invData[r][invOutCol] = Math.max(0, cOut);
+                             invData[r][invRetCol] = Math.max(0, cRet);
+                             invData[r][invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
+                             invSheet.getRange(invHeaderIdx + 1 + r, 1, 1, invLc).setValues([invData[r]]);
+                             break;
+                         }
+                     }
+                 } else {
+                     var foundOld = false, foundNew = false;
+                     for(var r = 0; r < invData.length; r++) {
+                         if(invData[r][invBcCol] == oldBarcode) {
+                             foundOld = true;
+                             var cIn = parseInt(invData[r][invInCol]) || 0;
+                             var cOut = parseInt(invData[r][invOutCol]) || 0;
+                             var cRet = parseInt(invData[r][invRetCol]) || 0;
+                             if(sheetName === 'Inbond') cIn -= oldQty;
+                             if(sheetName === 'Outbond') cOut -= oldQty;
+                             if(sheetName === 'Return') cRet -= oldQty;
+                             invData[r][invInCol] = Math.max(0, cIn);
+                             invData[r][invOutCol] = Math.max(0, cOut);
+                             invData[r][invRetCol] = Math.max(0, cRet);
+                             invData[r][invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
+                             invSheet.getRange(invHeaderIdx + 1 + r, 1, 1, invLc).setValues([invData[r]]);
+                         }
+                         if(invData[r][invBcCol] == newBarcode) {
+                             foundNew = true;
+                             var cIn = parseInt(invData[r][invInCol]) || 0;
+                             var cOut = parseInt(invData[r][invOutCol]) || 0;
+                             var cRet = parseInt(invData[r][invRetCol]) || 0;
+                             if(sheetName === 'Inbond') cIn += newQty;
+                             if(sheetName === 'Outbond') cOut += newQty;
+                             if(sheetName === 'Return') cRet += newQty;
+                             invData[r][invInCol] = Math.max(0, cIn);
+                             invData[r][invOutCol] = Math.max(0, cOut);
+                             invData[r][invRetCol] = Math.max(0, cRet);
+                             invData[r][invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
+                             invSheet.getRange(invHeaderIdx + 1 + r, 1, 1, invLc).setValues([invData[r]]);
+                         }
+                     }
+                     if(!foundNew && newBarcode) {
+                         var nr = [];
+                         for(var ic=0; ic<invHeaders.length; ic++) {
+                             var hn = invHeaders[ic];
+                             if(hn === 'Barcode') nr.push(newBarcode);
+                             else if(hn === 'Inbond') nr.push(sheetName === 'Inbond' ? newQty : 0);
+                             else if(hn === 'Outbond') nr.push(sheetName === 'Outbond' ? newQty : 0);
+                             else if(hn === 'Return') nr.push(sheetName === 'Return' ? newQty : 0);
+                             else if(hn === 'Stock') nr.push((sheetName === 'Inbond' ? newQty : 0) - (sheetName === 'Outbond' ? newQty : 0) + (sheetName === 'Return' ? newQty : 0));
+                             else {
+                                 nr.push(payload[hn] || "");
+                             }
+                         }
+                         invSheet.appendRow(nr);
+                     }
+                 }
+             }
+         }
+      }
+      return ContentService.createTextOutput(JSON.stringify({status: "success", message: "Data berhasil diubah"})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'update_stock') {
+       var barcode = payload['Barcode'];
+       var type = payload['type']; 
+       var qty = parseInt(payload['Qty']) || 0;
+       
+       var barcodeColIndex = headers.indexOf('Barcode');
+       var inbondColIndex = headers.indexOf('Inbond');
+       var outbondColIndex = headers.indexOf('Outbond');
+       var returnColIndex = headers.indexOf('Return');
+       var stockColIndex = headers.indexOf('Stock');
+       
+       var lastRow = sheet.getLastRow();
+       var data = [];
+       if(lastRow > headerRowIdx) {
+           data = sheet.getRange(headerRowIdx + 1, 1, lastRow - headerRowIdx, lastCol).getValues();
+       }
+       
+       var found = false;
+       for(var r = 0; r < data.length; r++) {
+         if(data[r][barcodeColIndex] == barcode) {
+            found = true;
+            var actualRow = r + headerRowIdx + 1;
+            
+            if(type === 'INBOND') sheet.getRange(actualRow, inbondColIndex+1).setValue((parseInt(data[r][inbondColIndex])||0) + qty);
+            if(type === 'OUTBOND') sheet.getRange(actualRow, outbondColIndex+1).setValue((parseInt(data[r][outbondColIndex])||0) + qty);
+            if(type === 'RETURN') sheet.getRange(actualRow, returnColIndex+1).setValue((parseInt(data[r][returnColIndex])||0) + qty);
+            
+            SpreadsheetApp.flush(); 
+            var updatedData = sheet.getRange(actualRow, 1, 1, lastCol).getValues()[0];
+            var newIn = parseInt(updatedData[inbondColIndex])||0;
+            var newOut = parseInt(updatedData[outbondColIndex])||0;
+            var newRet = parseInt(updatedData[returnColIndex])||0;
+            sheet.getRange(actualRow, stockColIndex+1).setValue(newIn - newOut + newRet);
+            break;
+         }
+       }
+       if(!found) {
+         var newRow = [];
+         for (var i = 0; i < headers.length; i++) {
+           var h = headers[i];
+           if(h === 'Barcode') newRow.push(barcode);
+           else if(h === 'Inbond') newRow.push(type === 'INBOND' ? qty : 0);
+           else if(h === 'Outbond') newRow.push(type === 'OUTBOND' ? qty : 0);
+           else if(h === 'Return') newRow.push(type === 'RETURN' ? qty : 0);
+           else if(h === 'Stock') {
+              var newIn = type === 'INBOND' ? qty : 0;
+              var newOut = type === 'OUTBOND' ? qty : 0;
+              var newRet = type === 'RETURN' ? qty : 0;
+              newRow.push(newIn - newOut + newRet);
+           } else {
+             // Dinamis ambil dari payload (misal: Scan, Brand, SKU, Price)
+             newRow.push(payload[h] || "");
+           }
+         }
+         sheet.appendRow(newRow);
+       }
+       return ContentService.createTextOutput(JSON.stringify({status: "success"})).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // TAMBAHAN: FITUR PENCATATAN HISTORI
+    if (action === 'log_history') {
+       var histSheet = ss.getSheetByName('Histori');
+       if(histSheet) {
+           var waktu = new Date().toLocaleString('id-ID');
+           var user = payload['user'] || 'Unknown';
+           var activity = payload['activity'] || '';
+           var detail = payload['detail'] || '';
+           histSheet.appendRow([waktu, user, activity, detail]);
+           return ContentService.createTextOutput(JSON.stringify({status: "success"})).setMimeType(ContentService.MimeType.JSON);
+       } else {
+           return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Sheet Histori tidak ada"})).setMimeType(ContentService.MimeType.JSON);
+       }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Action tidak valid"})).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doOptions(e) {
+  var headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400"
+  };
+  return ContentService.createTextOutput("").setHeaders(headers);
+}
+
+// ==========================================
+// FUNGSI UNTUK SINKRONISASI INVENTORY ULANG
+// ==========================================
+// Cara pakai: Pilih nama fungsi ini di toolbar editor, lalu klik "Jalankan" (Run)
+function recalculateInventory() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  function getColIdx(headers, name) {
+    if(!headers) return -1;
+    var target = name.toLowerCase();
+    for(var i=0; i<headers.length; i++) {
+      if(headers[i] && headers[i].toString().trim().toLowerCase() === target) return i;
+    }
+    return -1;
+  }
+
+  var sheetIn = ss.getSheetByName("Inbond");
+  var sheetOut = ss.getSheetByName("Outbond");
+  var sheetRet = ss.getSheetByName("Return");
+  var sheetInv = ss.getSheetByName("Inventory");
+  
+  if(!sheetIn || !sheetInv) {
+    throw new Error("Sheet Inbond atau Inventory tidak ditemukan!");
+  }
+  
+  var inData = sheetIn.getDataRange().getValues();
+  if(inData.length < 2) throw new Error("Data Inbond kosong!");
+  
+  var inHeaders = inData[0];
+  if(!inHeaders[0] && !inHeaders[1] && inData.length >= 2) { inHeaders = inData[1]; inData.shift(); }
+  
+  var barcodeIdx = getColIdx(inHeaders, "Barcode");
+  var qtyIdx = getColIdx(inHeaders, "Qty");
+  
+  if(barcodeIdx === -1 || qtyIdx === -1) {
+    throw new Error("Kolom BARCODE atau QTY tidak ditemukan di Inbond!");
+  }
+  
+  var inventoryMap = {};
+  
+  for(var i=1; i<inData.length; i++) {
+    var row = inData[i];
+    var bc = row[barcodeIdx] ? String(row[barcodeIdx]).trim() : "";
+    if(!bc) continue;
+    
+    var qty = parseInt(row[qtyIdx]) || 0;
+    
+    if(!inventoryMap[bc]) {
+      inventoryMap[bc] = {
+        scan: row[getColIdx(inHeaders, "Scan")] || "",
+        brand: row[getColIdx(inHeaders, "Brand")] || "",
+        sku: row[getColIdx(inHeaders, "SKU")] || "",
+        desc: row[getColIdx(inHeaders, "Description")] || "",
+        color: row[getColIdx(inHeaders, "Colour")] || "",
+        size: row[getColIdx(inHeaders, "Size")] || "",
+        price: row[getColIdx(inHeaders, "Price")] || "",
+        inbond: 0, outbond: 0, ret: 0
+      };
+    }
+    inventoryMap[bc].inbond += qty;
+  }
+  
+  if(sheetOut && sheetOut.getLastRow() > 1) {
+    var outData = sheetOut.getDataRange().getValues();
+    var outHeaders = outData[0];
+    if(!outHeaders[0] && !outHeaders[1]) { outHeaders = outData[1]; outData.shift(); }
+    var obcIdx = getColIdx(outHeaders, "Barcode");
+    var oqtyIdx = getColIdx(outHeaders, "Qty");
+    if(obcIdx !== -1 && oqtyIdx !== -1) {
+      for(var j=1; j<outData.length; j++) {
+        var bc = outData[j][obcIdx] ? String(outData[j][obcIdx]).trim() : "";
+        if(bc && inventoryMap[bc]) {
+          inventoryMap[bc].outbond += (parseInt(outData[j][oqtyIdx]) || 0);
+        }
+      }
+    }
+  }
+  
+  if(sheetRet && sheetRet.getLastRow() > 1) {
+    var retData = sheetRet.getDataRange().getValues();
+    var retHeaders = retData[0];
+    if(!retHeaders[0] && !retHeaders[1]) { retHeaders = retData[1]; retData.shift(); }
+    var rbcIdx = getColIdx(retHeaders, "Barcode");
+    var rqtyIdx = getColIdx(retHeaders, "Qty");
+    if(rbcIdx !== -1 && rqtyIdx !== -1) {
+      for(var k=1; k<retData.length; k++) {
+        var bc = retData[k][rbcIdx] ? String(retData[k][rbcIdx]).trim() : "";
+        if(bc && inventoryMap[bc]) {
+          inventoryMap[bc].ret += (parseInt(retData[k][rqtyIdx]) || 0);
+        }
+      }
+    }
+  }
+  
+  var lastCol = sheetInv.getLastColumn();
+  var invHeaders = [];
+  var headerRow = 1;
+  
+  if(lastCol > 0) {
+    invHeaders = sheetInv.getRange(1, 1, 1, lastCol).getValues()[0];
+    if(!invHeaders[0] && !invHeaders[1] && sheetInv.getLastRow() >= 2) {
+      invHeaders = sheetInv.getRange(2, 1, 1, lastCol).getValues()[0];
+      headerRow = 2;
+    }
+  }
+  
+  if(invHeaders.length < 5 || (invHeaders[0] === "" && invHeaders[2] === "")) {
+    invHeaders = ["SCAN", "BRAND", "BARCODE", "SKU", "DESCRIPTION", "COLOUR", "SIZE", "PRICE", "INBOND", "OUTBOND", "RETURN", "STOCK"];
+    headerRow = 1;
+    sheetInv.getRange(1, 1, 1, invHeaders.length).setValues([invHeaders]);
+    sheetInv.getRange(1, 1, 1, invHeaders.length).setFontWeight("bold").setBackground("#d0e0e3");
+  }
+  
+  var resultRows = [];
+  for(var bc in inventoryMap) {
+    var item = inventoryMap[bc];
+    var stock = item.inbond - item.outbond + item.ret;
+    
+    var newRow = [];
+    for(var h=0; h<invHeaders.length; h++) {
+      var headerName = invHeaders[h] ? invHeaders[h].toString().trim().toUpperCase() : "";
+      if(headerName === 'SCAN') newRow.push(item.scan);
+      else if(headerName === 'BRAND') newRow.push(item.brand);
+      else if(headerName === 'BARCODE') newRow.push(bc);
+      else if(headerName === 'SKU') newRow.push(item.sku);
+      else if(headerName === 'DESCRIPTION') newRow.push(item.desc);
+      else if(headerName === 'COLOUR') newRow.push(item.color);
+      else if(headerName === 'SIZE') newRow.push(item.size);
+      else if(headerName === 'PRICE') newRow.push(item.price);
+      else if(headerName === 'INBOND') newRow.push(item.inbond);
+      else if(headerName === 'OUTBOND') newRow.push(item.outbond);
+      else if(headerName === 'RETURN') newRow.push(item.ret);
+      else if(headerName === 'STOCK') newRow.push(stock);
+      else newRow.push("");
+    }
+    resultRows.push(newRow);
+  }
+  
+  var startRow = headerRow + 1;
+  var lastDataRow = sheetInv.getLastRow();
+  if(lastDataRow >= startRow) {
+    sheetInv.getRange(startRow, 1, lastDataRow - startRow + 1, lastCol || invHeaders.length).clearContent();
+  }
+  
+  if(resultRows.length > 0) {
+    sheetInv.getRange(startRow, 1, resultRows.length, invHeaders.length).setValues(resultRows);
+  }
+  Logger.log("Sukses! " + resultRows.length + " item unik telah disinkronkan ke Inventory.");
+}

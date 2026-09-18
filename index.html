@@ -545,6 +545,91 @@
           <div id="panelTableReturn" class="panel"><div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10"><tr><th class="p-3">Tanggal</th><th class="p-3">Scan</th><th class="p-3">Brand</th><th class="p-3">Barcode</th><th class="p-3">SKU</th><th class="p-3">Description</th><th class="p-3">Colour</th><th class="p-3">Size</th><th class="p-3">Price</th><th class="p-3">Qty</th><th class="p-3">Bin/Box</th><th class="p-3">Inventory Transfer Number</th><th class="p-3">From Location</th><th class="p-3">To Location</th><th class="p-3 text-center">Aksi</th></tr></thead><tbody id="returnTableBody"></tbody></table></div></div>
         </div>
 
+        <!-- TAB: PACKING LIST -->
+        <div id="tab-packing-list" class="tab-content hidden animate-fade-in pb-20 sm:pb-0">
+          
+          <div id="panelFormPackingList" class="panel mb-6 hidden">
+            <div class="panel-header"><h3 class="panel-title text-sm">Form Input Packing List (Penyimpanan Sementara)</h3></div>
+            <div class="p-4">
+              <form id="packingListForm" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <input type="hidden" id="pack_type" value="PACKING LIST">
+                <div>
+                    <label class="form-label text-xs">Scan Barcode</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="pack_barcode" required class="form-input py-2 w-full">
+                        <button type="button" data-target="pack_barcode" class="btnStartCamera bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg md:hidden flex items-center justify-center shadow-md shrink-0">
+                            <i data-lucide="camera" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                <div><label class="form-label text-xs">Brand</label><input type="text" id="pack_brand" class="form-input py-2 bg-gray-50 dark:bg-[#151521]" readonly></div>
+                <div><label class="form-label text-xs">SKU</label><input type="text" id="pack_sku" class="form-input py-2 bg-gray-50 dark:bg-[#151521]" readonly></div>
+                <div><label class="form-label text-xs">Description</label><input type="text" id="pack_description" class="form-input py-2 bg-gray-50 dark:bg-[#151521]" readonly></div>
+                <div><label class="form-label text-xs">Colour</label><input type="text" id="pack_colour" class="form-input py-2 bg-gray-50 dark:bg-[#151521]" readonly></div>
+                <div><label class="form-label text-xs">Size</label><input type="text" id="pack_size" class="form-input py-2 bg-gray-50 dark:bg-[#151521]" readonly></div>
+                <div><label class="form-label text-xs">Price</label><input type="text" id="pack_price" class="form-input py-2 bg-gray-50 dark:bg-[#151521]" readonly></div>
+                <div><label class="form-label text-xs">Qty (Packing)</label><input type="number" id="pack_qty" value="1" required class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Bin/Box</label><input type="text" id="pack_bin" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">Inventory Transfer Number</label><input type="text" id="pack_transfer" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">From Location</label><input type="text" id="pack_from" class="form-input py-2"></div>
+                <div><label class="form-label text-xs">To Location</label><input type="text" id="pack_to" class="form-input py-2"></div>
+                <div class="col-span-full mt-4">
+                  <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center transition-all transform hover:scale-[1.02]">
+                    <i data-lucide="plus" class="w-5 h-5 mr-2"></i> Tambah ke List Sementara
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+          
+          <div id="panelTempPackingList" class="panel mb-6 hidden border-l-4 border-yellow-500">
+            <div class="panel-header flex justify-between items-center bg-yellow-50 dark:bg-yellow-900/20">
+              <h3 class="font-bold text-yellow-800 dark:text-yellow-500">List Sementara (Belum Disimpan)</h3>
+              <button id="btnSavePackingList" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md animate-pulse flex items-center">
+                <i data-lucide="save" class="w-4 h-4 mr-2"></i> SIMPAN KE SERVER
+              </button>
+            </div>
+            <div class="overflow-x-auto w-full">
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-500">
+                  <tr><th class="p-3">Hapus</th><th class="p-3">Tipe</th><th class="p-3">Barcode</th><th class="p-3">Brand</th><th class="p-3">Qty</th><th class="p-3">Bin/Box</th></tr>
+                </thead>
+                <tbody id="tempPackingListTbody" class="divide-y divide-gray-100 dark:divide-gray-800"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="overflow-x-auto w-full custom-scrollbar">
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-indigo-900 text-white">
+                  <tr>
+                    <th class="p-3 rounded-tl-lg text-center" style="width: 80px;">Aksi</th>
+                    <th class="p-3">Tanggal</th>
+                    <th class="p-3">Scan</th>
+                    <th class="p-3">Brand</th>
+                    <th class="p-3">Barcode</th>
+                    <th class="p-3">SKU</th>
+                    <th class="p-3">Description</th>
+                    <th class="p-3">Colour</th>
+                    <th class="p-3">Size</th>
+                    <th class="p-3">Price</th>
+                    <th class="p-3 bg-indigo-700 font-bold text-center">Qty</th>
+                    <th class="p-3">Bin/Box</th>
+                    <th class="p-3">ITN</th>
+                    <th class="p-3">From</th>
+                    <th class="p-3 rounded-tr-lg">To</th>
+                  </tr>
+                </thead>
+                <tbody id="packingListTbody" class="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tr><td colspan="15" class="p-8 text-center text-gray-500"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2 text-indigo-400"></i>Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+        
         <!-- TAB: PENGIRIMAN -->
         <div id="tab-pengiriman" class="tab-content hidden animate-slide-in">
           <div class="space-y-6">
@@ -685,7 +770,7 @@
     </div>
   </div>
 
-  <script src="script_v3.js?v=1789316139864"></script>
+  <script src="script_v3.js?v=1789724433877"></script>
 </body>
 </html>
 

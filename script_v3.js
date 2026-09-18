@@ -96,15 +96,16 @@ navItems.forEach(item => {
         if(targetId === 'tab-outbond') txt = 'SCAN OUTBOND';
         if(targetId === 'tab-return') txt = 'SCAN RETURN';
         if(targetId === 'tab-pengiriman') txt = 'INPUT PENGIRIMAN';
+        if(targetId === 'tab-packing-list') txt = 'INPUT PACKING LIST';
 
-        if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman'].includes(targetId)) {
+        if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman', 'tab-packing-list'].includes(targetId)) {
             btnToggleForm.classList.remove('hidden');
         } else {
             btnToggleForm.classList.add('hidden');
         }
         
         // Selalu tutup form saat pindah tab
-        ['Inbond', 'Outbond', 'Return', 'Pengiriman'].forEach(t => {
+        ['Inbond', 'Outbond', 'Return', 'Pengiriman', 'PackingList'].forEach(t => {
             const p = document.getElementById('panelForm' + t);
             if(p) p.classList.add('hidden');
         });
@@ -1077,6 +1078,12 @@ function setupAutofill(prefix) {
         if (prefix === 'in') btnId = 'btnSubmitInbondTemp';
         else if (prefix === 'out') btnId = 'btnSubmitOutbondTemp';
         else if (prefix === 'ret') btnId = 'btnSubmitReturnTemp';
+        else if (prefix === 'pack') {
+             // For packing list form, we can just trigger submit
+             const form = document.getElementById('packingListForm');
+             if(form) form.dispatchEvent(new Event('submit', { cancelable: true }));
+             return;
+        }
         const btn = document.getElementById(btnId);
 
         const originalText = btn ? btn.innerText : 'Simpan';
