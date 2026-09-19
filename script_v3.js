@@ -289,7 +289,7 @@ function renderPackingListRows(data, tbody) {
                 <td class="p-3">${d.Colour || ''}</td>
                 <td class="p-3">${d.Size || ''}</td>
                 <td class="p-3">${d.Price || ''}</td>
-                <td class="p-3 font-bold text-center bg-indigo-50">${d.Qty || ''}</td>
+                <td class="p-3 font-bold text-center bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200">${d.Qty || ''}</td>
                 <td class="p-3">${d['Bin/Box'] || d.Bin || ''}</td>
                 <td class="p-3">${d.ITN || d.IT || ''}</td>
                 <td class="p-3">${d.From || ''}</td>
@@ -2004,6 +2004,50 @@ document.addEventListener('DOMContentLoaded', () => {
                     const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim());
                     const allData = [];
                     
+                    // --- AUTO ASSIGN BIN/BOX LOGIC ---
+                    let stockPerBin = {};
+                    try {
+                        let inbondData = JSON.parse(localStorage.getItem('wms_table_Inbond') || "[]");
+                        let outbondData = JSON.parse(localStorage.getItem('wms_table_Outbond') || "[]");
+                        let returnData = JSON.parse(localStorage.getItem('wms_table_Return') || "[]");
+                        
+                        // Jika cache kosong, ambil dulu secara diam-diam agar auto-assign akurat!
+                        if(inbondData.length === 0) {
+                            btnUploadPack.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Sinkronisasi Bin/Box...';
+                            const resIn = await fetch(SCRIPT_URL + "?sheet=Inbond");
+                            const textIn = await resIn.text();
+                            if(textIn.startsWith('[')) {
+                                inbondData = JSON.parse(textIn);
+                                localStorage.setItem('wms_table_Inbond', JSON.stringify([...inbondData].reverse()));
+                            }
+                        }
+                        if(returnData.length === 0) {
+                            const resRet = await fetch(SCRIPT_URL + "?sheet=Return");
+                            const textRet = await resRet.text();
+                            if(textRet.startsWith('[')) returnData = JSON.parse(textRet);
+                        }
+                        
+                        function processStock(data, multiplier) {
+                            data.forEach(d => {
+                                let bc = String(d.Barcode || d.Scan || "").trim();
+                                let bin = String(d['Bin/Box'] || d.Bin || "").trim();
+                                let qty = parseInt(d.Qty) || 0;
+                                if(bc && bin) {
+                                    if(!stockPerBin[bc]) stockPerBin[bc] = {};
+                                    if(!stockPerBin[bc][bin]) stockPerBin[bc][bin] = 0;
+                                    stockPerBin[bc][bin] += (qty * multiplier);
+                                }
+                            });
+                        }
+                        
+                        processStock(inbondData, 1);
+                        processStock(returnData, 1);
+                        processStock(outbondData, -1);
+                    } catch(e) {
+                        console.error("Gagal kalkulasi stock per bin untuk auto-assign", e);
+                    }
+                    // ---------------------------------
+                    
                     for(let i=1; i<lines.length; i++) {
                         const row = parseCSVLine(lines[i], delimiter);
                         if(row.length < 2) continue;
@@ -2011,6 +2055,29 @@ document.addEventListener('DOMContentLoaded', () => {
                         for(let j=0; j<headers.length; j++) {
                             if(headers[j]) obj[headers[j]] = row[j] !== undefined ? row[j].trim() : '';
                         }
+                        
+                        // AUTO ASSIGN BIN/BOX!
+                        let bc = String(obj.Barcode || obj.Scan || "").trim();
+                        let currentBin = String(obj['Bin/Box'] || obj.Bin || "").trim();
+                        if(!currentBin && bc && stockPerBin[bc]) {
+                            let availableBins = stockPerBin[bc];
+                            let assignedBin = "";
+                            for(let bin in availableBins) {
+                                if(availableBins[bin] > 0) {
+                                    assignedBin = bin;
+                                    break;
+                                }
+                            }
+                            if(assignedBin) {
+                                if(obj.hasOwnProperty('Bin/Box')) obj['Bin/Box'] = assignedBin;
+                                else if(obj.hasOwnProperty('Bin')) obj['Bin'] = assignedBin;
+                                else obj['Bin/Box'] = assignedBin;
+                                
+                                // Kurangi stok sementara agar item berikutnya yg barcodenya sama tidak menumpuk di bin yg sudah kosong
+                                stockPerBin[bc][assignedBin] -= (parseInt(obj.Qty) || 1);
+                            }
+                        }
+                        
                         allData.push(obj);
                     }
                     
