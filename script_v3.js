@@ -176,6 +176,7 @@ const executeGlobalSearch = () => {
         else if(actualSheetName === 'Outbond') tbodyId = 'outbondTableBody';
         else if(actualSheetName === 'Return') tbodyId = 'returnTableBody';
         else if(actualSheetName === 'Pengiriman') tbodyId = 'pengirimanTableBody';
+        else if(actualSheetName === 'Packing List') tbodyId = 'packingListTbody';
         
         const tbody = tbodyId ? document.getElementById(tbodyId) : activeTab.querySelector('tbody');
         
@@ -222,6 +223,7 @@ const executeGlobalSearch = () => {
                 else if(actualSheetName === 'Outbond') renderOutbondRows(data, tbody);
                 else if(actualSheetName === 'Return') renderReturnRows(data, tbody);
                 else if(actualSheetName === 'Pengiriman') renderPengirimanRows(data, tbody);
+                else if(actualSheetName === 'Packing List') renderPackingListRows(data, tbody);
             }
             if(window.lucide) window.lucide.createIcons();
             
@@ -235,6 +237,34 @@ const executeGlobalSearch = () => {
 document.getElementById('globalSearch')?.addEventListener('keydown', (e) => { if(e.key === 'Enter') executeGlobalSearch(); });
 document.getElementById('btnGlobalSearch')?.addEventListener('click', executeGlobalSearch);
 
+
+
+function renderPackingListRows(data, tbody) {
+    tbody.innerHTML = '';
+    data.forEach(d => {
+        if(d.Barcode) {
+            tbody.innerHTML += `<tr>
+                <td class="p-3 text-center">
+                    <button class="bg-red-500 text-white rounded p-1 hover:bg-red-600 shadow" title="Data Server tidak bisa dihapus langsung"><i data-lucide="lock" class="w-4 h-4"></i></button>
+                </td>
+                <td class="p-3 text-xs text-gray-500">${d.Tanggal || d.Date || d.Waktu || ''}</td>
+                <td class="p-3">${d.Scan || ''}</td>
+                <td class="p-3">${d.Brand || ''}</td>
+                <td class="p-3">${d.Barcode || ''}</td>
+                <td class="p-3">${d.SKU || ''}</td>
+                <td class="p-3">${d.Description || ''}</td>
+                <td class="p-3">${d.Colour || ''}</td>
+                <td class="p-3">${d.Size || ''}</td>
+                <td class="p-3">${d.Price || ''}</td>
+                <td class="p-3 font-bold text-center bg-indigo-50">${d.Qty || ''}</td>
+                <td class="p-3">${d['Bin/Box'] || d.Bin || ''}</td>
+                <td class="p-3">${d.ITN || d.IT || ''}</td>
+                <td class="p-3">${d.From || ''}</td>
+                <td class="p-3">${d.To || ''}</td>
+            </tr>`;
+        }
+    });
+}
 
 function renderInventoryRows(data, tbody) {
     data.forEach(d => {
@@ -1043,6 +1073,12 @@ async function loadDataForTab(tabId) {
         if(data && data.length > 0) tabCache[tabId] = true;
     }
     
+    
+    else if(tabId === 'tab-packing-list') {
+        const data = await fetchSheet("Packing List","packingListTbody", (d, t) => renderPackingListRows(d.slice().reverse(), t));
+        if(data && data.length > 0) tabCache[tabId] = true;
+    }
+
     else if(tabId === 'tab-pengiriman') {
         const data = await fetchSheet("Pengiriman","pengirimanTableBody", (d, t) => renderPengirimanRows(d.slice().reverse(), t));
         if(data && data.length > 0) tabCache[tabId] = true;
