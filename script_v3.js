@@ -23,6 +23,39 @@ window.preloadUsers = function() {
 };
 window.preloadUsers();
 
+// VALIDASI APPS SCRIPT VERSI BARU
+(async function checkAppsScriptVersion() {
+    try {
+        const res = await fetch(SCRIPT_URL + "?action=download_packing_list&sheet=Packing%20List");
+        const text = await res.text();
+        if (text === "[]") {
+            Swal.fire({
+                title: 'CRITICAL UPDATE REQUIRED!',
+                html: `<div style="text-align: left; font-size: 14px;">
+                    <p class="text-red-600 font-bold mb-2">Google Apps Script Bapak masih versi LAMA!</p>
+                    <p>Karena itu fitur Upload sangat lambat/gagal, dan fitur Download Bin/Box tidak akan berfungsi.</p>
+                    <p class="mt-2 font-bold">CARA MEMPERBAIKI:</p>
+                    <ol class="list-decimal pl-5 mt-1 space-y-1">
+                        <li>Buka Google Spreadsheet WMS Bapak.</li>
+                        <li>Klik <b>Ekstensi > Apps Script</b>.</li>
+                        <li>Buka file <b>apps_script.js</b> di VS Code Bapak, copy SEMUA isinya.</li>
+                        <li>Paste dan timpa semua kode di Google Apps Script, lalu <b>Save (Disket)</b>.</li>
+                        <li>Klik <b>Terapkan (Deploy) > Kelola deployment (Manage deployments)</b>.</li>
+                        <li>Klik ikon <b>Pensil (Edit)</b>, pilih versi <b>Versi baru (New version)</b>, lalu klik <b>Terapkan</b>.</li>
+                        <li>Copy <b>URL Aplikasi Web</b> yang baru muncul.</li>
+                        <li>Buka <b>script_v3.js</b> di VS Code, ubah tulisan <b>SCRIPT_URL</b> di baris paling atas dengan URL baru tersebut.</li>
+                        <li>Upload ulang (Commit & Push) ke GitHub.</li>
+                    </ol>
+                </div>`,
+                icon: 'error',
+                allowOutsideClick: false,
+                confirmButtonText: 'Saya Mengerti'
+            });
+        }
+    } catch(e) {}
+})();
+
+
 
 // ==========================================
 // 2. UI & STATE MANAGEMENT
@@ -1939,28 +1972,77 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnUploadPack.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Uploading (Super Fast Mode)...';
                 
                 try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 detik timeout
-                    
-                    const res = await fetch(SCRIPT_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            action: 'upload_csv_raw',
-                            sheet: 'Packing List',
-                            payload: text
-                        }),
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-                    const out = await res.json();
-                    if(out.status === 'success') {
-                        Swal.fire('Berhasil', out.message || 'Data berhasil diupload!', 'success');
-                        if(typeof loadDataForTab === 'function') loadDataForTab('Packing List');
-                    } else {
-                        Swal.fire('Error', out.message || 'Gagal upload', 'error');
+                    const csvText = text.trim();
+                    if(!csvText) {
+                        Swal.fire('Error', 'CSV Kosong', 'error');
+                        return;
                     }
+                    const delimiter = (csvText.indexOf(';') !== -1 && csvText.split('\n')[0].indexOf(',') === -1) ? ';' : ',';
+                    
+                    function parseCSVLine(line, del) {
+                        const row = [];
+                        let cur = '';
+                        let inQuote = false;
+                        for(let i=0; i<line.length; i++) {
+                            const c = line[i];
+                            if(c === '"') {
+                                if(inQuote && line[i+1] === '"') { cur += '"'; i++; }
+                                else { inQuote = !inQuote; }
+                            } else if(c === del && !inQuote) {
+                                row.push(cur); cur = '';
+                            } else {
+                                cur += c;
+                            }
+                        }
+                        row.push(cur);
+                        return row;
+                    }
+                    
+                    const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
+                    if(lines.length < 2) throw new Error("CSV kurang dari 2 baris");
+                    
+                    const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim());
+                    const allData = [];
+                    
+                    for(let i=1; i<lines.length; i++) {
+                        const row = parseCSVLine(lines[i], delimiter);
+                        if(row.length < 2) continue;
+                        const obj = {};
+                        for(let j=0; j<headers.length; j++) {
+                            if(headers[j]) obj[headers[j]] = row[j] !== undefined ? row[j].trim() : '';
+                        }
+                        allData.push(obj);
+                    }
+                    
+                    if(allData.length === 0) throw new Error("Tidak ada baris data valid");
+                    
+                    const chunkSize = 500;
+                    let successCount = 0;
+                    
+                    for(let i=0; i < allData.length; i += chunkSize) {
+                        const chunk = allData.slice(i, i + chunkSize);
+                        btnUploadPack.innerHTML = `<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Uploading ${i+chunk.length} / ${allData.length} ...`;
+                        
+                        const res = await fetch(SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                action: 'upload_csv',
+                                sheet: 'Packing List',
+                                payload: chunk
+                            })
+                        });
+                        const out = await res.json();
+                        if(out.status === 'success') successCount += chunk.length;
+                        else throw new Error(out.message || "Gagal upload chunk");
+                    }
+                    
+                    if(successCount > 0) {
+                        Swal.fire('Berhasil', `${successCount} baris berhasil diupload!`, 'success');
+                        if(typeof loadDataForTab === 'function') loadDataForTab('tab-packing-list');
+                    }
+                    
                 } catch(err) {
-                    Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+                    Swal.fire('Error', err.message || 'Terjadi kesalahan.', 'error');
                 }
                 
                 btnUploadPack.innerHTML = '<i data-lucide="upload-cloud" class="w-6 h-6 mr-3"></i> Upload Data Packing List';
