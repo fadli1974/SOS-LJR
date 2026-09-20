@@ -139,16 +139,23 @@ navItems.forEach(item => {
                 btnUpload.classList.remove('hidden');
                 btnTemplate.classList.remove('hidden');
                 if (btnDownload) btnDownload.classList.remove('hidden');
+                if (document.getElementById('btnUploadPackingList')) document.getElementById('btnUploadPackingList').classList.add('hidden');
+                if (document.getElementById('btnDownloadPackingList')) document.getElementById('btnDownloadPackingList').classList.add('hidden');
             } else {
                 btnUpload.classList.add('hidden');
-                btnTemplate.classList.add('hidden');
+                btnTemplate.classList.remove('hidden'); // SHOW TEMPLATE FOR PACKING LIST!
                 if (btnDownload) btnDownload.classList.add('hidden');
+                if (document.getElementById('btnUploadPackingList')) document.getElementById('btnUploadPackingList').classList.remove('hidden');
+                if (document.getElementById('btnDownloadPackingList')) document.getElementById('btnDownloadPackingList').classList.remove('hidden');
             }
         } else {
             btnUpload.classList.add('hidden');
             btnTemplate.classList.add('hidden');
             if (btnDownload && targetId !== 'tab-dashboard') btnDownload.classList.remove('hidden');
             else if (btnDownload && targetId === 'tab-dashboard') btnDownload.classList.add('hidden');
+            
+            if (document.getElementById('btnUploadPackingList')) document.getElementById('btnUploadPackingList').classList.add('hidden');
+            if (document.getElementById('btnDownloadPackingList')) document.getElementById('btnDownloadPackingList').classList.add('hidden');
         }
     }
     

@@ -175,6 +175,15 @@
                 <i data-lucide="upload" class="w-4 h-4 mr-2"></i> UPLOAD
               </button>
               <input type="file" id="fileUploadCsv" accept=".csv" class="hidden" />
+              <!-- Tombol Khusus Packing List -->
+              <button id="btnUploadPackingList" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
+                <i data-lucide="upload-cloud" class="w-4 h-4 mr-2"></i> UPLOAD DATA PACKING LIST
+              </button>
+              <input type="file" id="fileUploadPack" accept=".csv" class="hidden" />
+              <button id="btnDownloadPackingList" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
+                <i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i> DOWNLOAD PACKING LIST (AUTO BIN/BOX)
+              </button>
+
 
               <!-- Pencarian (Search) -->
               <div class="relative flex gap-2 items-center">
@@ -552,14 +561,7 @@
         <div id="tab-packing-list" class="tab-content hidden animate-fade-in pb-20 sm:pb-0">
           
           <!-- TOMBOL UPLOAD & DOWNLOAD PACKING LIST -->
-          <div class="flex flex-col sm:flex-row gap-4 mb-6">
-              <button id="btnUploadPackingList" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl shadow-lg flex items-center justify-center font-bold text-lg transition-transform transform hover:scale-[1.02]">
-                  <i data-lucide="upload-cloud" class="w-6 h-6 mr-3"></i> Upload Data Packing List
-              </button>
-              <button id="btnDownloadPackingList" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl shadow-lg flex items-center justify-center font-bold text-lg transition-transform transform hover:scale-[1.02]">
-                  <i data-lucide="download-cloud" class="w-6 h-6 mr-3"></i> Download Packing List (Auto Bin/Box)
-              </button>
-          </div>
+          
           
           <input type="file" id="fileUploadPackingList" class="hidden" accept=".csv">
           
@@ -787,7 +789,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="script_v3.js?v=1789890508504"></script>
+    <script src="script_v3.js?v=1789892977191"></script>
 </body>
 </html>
 
