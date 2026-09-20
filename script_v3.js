@@ -1,7 +1,7 @@
 // ==========================================
 // 1. KONFIGURASI GOOGLE APPS SCRIPT
 // ==========================================
-const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbxHZfOdxp2CLGSGC9MpQi0IXYAi4i-rg5WUZ08xC_OQHwXZ9JlfU-MI-vwBx7jVc2FA/exec";
+const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbwBPjp5CMk8SCV7vdcw_Y-dXTuQqrHaPmu3nJIxPciaTswr2zYyqAurDYVBLaxoPIyC/exec";
 
 let preloadedUsers = null;
 let usersFetchPromise = null;
@@ -291,9 +291,9 @@ function renderPackingListRows(data, tbody) {
                 <td class="p-3">${d.Price || ''}</td>
                 <td class="p-3 font-bold text-center bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200">${d.Qty || ''}</td>
                 <td class="p-3">${d['Bin/Box'] || d.Bin || ''}</td>
-                <td class="p-3">${d.ITN || d.IT || ''}</td>
-                <td class="p-3">${d.From || ''}</td>
-                <td class="p-3">${d.To || ''}</td>
+                <td class="p-3">${d.ITN || d.IT || d['Inventory Transfer Number'] || ''}</td>
+                <td class="p-3">${d.From || d['From Location'] || ''}</td>
+                <td class="p-3">${d.To || d['To Location'] || ''}</td>
             </tr>`;
         }
     });
@@ -2004,49 +2004,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim());
                     const allData = [];
                     
-                    // --- AUTO ASSIGN BIN/BOX LOGIC ---
-                    let stockPerBin = {};
-                    try {
-                        let inbondData = JSON.parse(localStorage.getItem('wms_table_Inbond') || "[]");
-                        let outbondData = JSON.parse(localStorage.getItem('wms_table_Outbond') || "[]");
-                        let returnData = JSON.parse(localStorage.getItem('wms_table_Return') || "[]");
-                        
-                        // Jika cache kosong, ambil dulu secara diam-diam agar auto-assign akurat!
-                        if(inbondData.length === 0) {
-                            btnUploadPack.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Sinkronisasi Bin/Box...';
-                            const resIn = await fetch(SCRIPT_URL + "?sheet=Inbond");
-                            const textIn = await resIn.text();
-                            if(textIn.startsWith('[')) {
-                                inbondData = JSON.parse(textIn);
-                                localStorage.setItem('wms_table_Inbond', JSON.stringify([...inbondData].reverse()));
-                            }
-                        }
-                        if(returnData.length === 0) {
-                            const resRet = await fetch(SCRIPT_URL + "?sheet=Return");
-                            const textRet = await resRet.text();
-                            if(textRet.startsWith('[')) returnData = JSON.parse(textRet);
-                        }
-                        
-                        function processStock(data, multiplier) {
-                            data.forEach(d => {
-                                let bc = String(d.Barcode || d.Scan || "").trim();
-                                let bin = String(d['Bin/Box'] || d.Bin || "").trim();
-                                let qty = parseInt(d.Qty) || 0;
-                                if(bc && bin) {
-                                    if(!stockPerBin[bc]) stockPerBin[bc] = {};
-                                    if(!stockPerBin[bc][bin]) stockPerBin[bc][bin] = 0;
-                                    stockPerBin[bc][bin] += (qty * multiplier);
-                                }
-                            });
-                        }
-                        
-                        processStock(inbondData, 1);
-                        processStock(returnData, 1);
-                        processStock(outbondData, -1);
-                    } catch(e) {
-                        console.error("Gagal kalkulasi stock per bin untuk auto-assign", e);
-                    }
-                    // ---------------------------------
+                    
                     
                     for(let i=1; i<lines.length; i++) {
                         const row = parseCSVLine(lines[i], delimiter);
@@ -2054,28 +2012,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         const obj = {};
                         for(let j=0; j<headers.length; j++) {
                             if(headers[j]) obj[headers[j]] = row[j] !== undefined ? row[j].trim() : '';
-                        }
-                        
-                        // AUTO ASSIGN BIN/BOX!
-                        let bc = String(obj.Barcode || obj.Scan || "").trim();
-                        let currentBin = String(obj['Bin/Box'] || obj.Bin || "").trim();
-                        if(!currentBin && bc && stockPerBin[bc]) {
-                            let availableBins = stockPerBin[bc];
-                            let assignedBin = "";
-                            for(let bin in availableBins) {
-                                if(availableBins[bin] > 0) {
-                                    assignedBin = bin;
-                                    break;
-                                }
-                            }
-                            if(assignedBin) {
-                                if(obj.hasOwnProperty('Bin/Box')) obj['Bin/Box'] = assignedBin;
-                                else if(obj.hasOwnProperty('Bin')) obj['Bin'] = assignedBin;
-                                else obj['Bin/Box'] = assignedBin;
-                                
-                                // Kurangi stok sementara agar item berikutnya yg barcodenya sama tidak menumpuk di bin yg sudah kosong
-                                stockPerBin[bc][assignedBin] -= (parseInt(obj.Qty) || 1);
-                            }
                         }
                         
                         allData.push(obj);
@@ -2107,10 +2043,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     if(successCount > 0) {
                         Swal.fire('Berhasil', `${successCount} baris berhasil diupload!`, 'success');
                         if(typeof loadDataForTab === 'function') loadDataForTab('tab-packing-list');
+                        
+                        // Reset the button
+                        btnUploadPack.innerHTML = '<i data-lucide="upload-cloud" class="w-6 h-6 mr-3"></i> Upload Data Packing List';
+                        btnUploadPack.disabled = false;
+                        if(window.lucide) window.lucide.createIcons();
                     }
                     
                 } catch(err) {
                     Swal.fire('Error', err.message || 'Terjadi kesalahan.', 'error');
+                    // Reset the button
+                    btnUploadPack.innerHTML = '<i data-lucide="upload-cloud" class="w-6 h-6 mr-3"></i> Upload Data Packing List';
+                    btnUploadPack.disabled = false;
+                    if(window.lucide) window.lucide.createIcons();
                 }
                 
                 btnUploadPack.innerHTML = '<i data-lucide="upload-cloud" class="w-6 h-6 mr-3"></i> Upload Data Packing List';
@@ -2125,21 +2070,22 @@ document.addEventListener('DOMContentLoaded', () => {
         btnDownloadPack.addEventListener('click', () => {
             Swal.fire({
                 title: 'Download & Auto-Assign Bin/Box',
-                text: "Sistem akan menghitung stok dan meng-assign Bin/Box otomatis ke file Packing List yang didownload. Lanjutkan?",
+                text: "Masukkan Inventory Transfer Number (ITN) untuk didownload (Kosongkan jika ingin download semua data di tab ini):",
+                input: 'text',
+                inputPlaceholder: 'Contoh: PL1',
                 icon: 'info',
                 showCancelButton: true,
                 confirmButtonText: 'Ya, Download',
                 cancelButtonText: 'Batal'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    const itn = result.value ? result.value.trim() : '';
                     const ori = btnDownloadPack.innerHTML;
                     btnDownloadPack.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Memproses...';
                     btnDownloadPack.disabled = true;
                     
-                    // Gunakan window.location atau a.click() untuk mendownload file dari GET request
-                    const downloadUrl = `${SCRIPT_URL}?action=download_packing_list&sheet=Packing List`;
+                    const downloadUrl = SCRIPT_URL + "?action=download_packing_list&sheet=Packing List" + (itn ? "&itn=" + encodeURIComponent(itn) : "");
                     
-                    // Kita buat invisible iframe atau a tag
                     const a = document.createElement('a');
                     a.href = downloadUrl;
                     a.target = '_blank';
@@ -2155,6 +2101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 3000);
                 }
             });
+        });
         });
     }
 });
