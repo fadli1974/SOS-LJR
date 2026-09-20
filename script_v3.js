@@ -149,8 +149,9 @@ navItems.forEach(item => {
     };
     
     if(btnUpload && btnTemplate) {
-        if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman'].includes(targetId)) {
-            btnUpload.classList.remove('hidden');
+        if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman', 'tab-packing-list'].includes(targetId)) {
+            // btnUpload.classList.remove('hidden'); // We don't show btnUpload for packing list because it has its own big green button!
+            if (targetId !== 'tab-packing-list') btnUpload.classList.remove('hidden');
             btnTemplate.classList.remove('hidden');
         } else {
             btnUpload.classList.add('hidden');
@@ -2042,6 +2043,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if(successCount > 0) {
                         Swal.fire('Berhasil', `${successCount} baris berhasil diupload!`, 'success');
+                        tabCache['tab-packing-list'] = false;
                         if(typeof loadDataForTab === 'function') loadDataForTab('tab-packing-list');
                         
                         // Reset the button
