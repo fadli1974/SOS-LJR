@@ -132,6 +132,8 @@ navItems.forEach(item => {
         if(targetId === 'tab-pengiriman') txt = 'INPUT PENGIRIMAN';
         if(targetId === 'tab-packing-list') txt = 'INPUT PACKING LIST';
 
+    }
+    if(btnUpload && btnTemplate) {
         if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman', 'tab-packing-list'].includes(targetId)) {
             if (targetId !== 'tab-packing-list') {
                 btnUpload.classList.remove('hidden');
