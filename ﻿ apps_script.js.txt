@@ -1,8 +1,8 @@
-﻿// apps_script.js
-﻿// KODE INI HARUS DI-COPY PASTE KE GOOGLE APPS SCRIPT (UPDATE VERSI CEPAT)
+// KODE INI HARUS DI-COPY PASTE KE GOOGLE APPS SCRIPT (UPDATE VERSI CEPAT)
 function doGet(e) {
   var sheetName = e.parameter.sheet;
   var action = e.parameter.action;
+  var itn = e.parameter.itn;
   if(!sheetName) return ContentService.createTextOutput("Error: Sheet tidak ditentukan");
   
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -13,6 +13,144 @@ function doGet(e) {
   var lastCol = sheet.getLastColumn();
   
   // FITUR DOWNLOAD CSV LANGSUNG DARI SPREADSHEET (SEMUA DATA)
+  // FITUR DOWNLOAD PACKING LIST DENGAN AUTO-ASSIGN BIN/BOX
+  if(action === 'download_packing_list') {
+      // 1. Ambil data Inbond, Outbond, Return untuk hitung stok per Bin/Box
+      var sheetIn = ss.getSheetByName('Inbond');
+      var sheetOut = ss.getSheetByName('Outbond');
+      var sheetRet = ss.getSheetByName('Return');
+      var sheetPack = ss.getSheetByName('Packing List');
+      
+      if(!sheetPack) return ContentService.createTextOutput("Error: Sheet Packing List tidak ditemukan");
+      
+      var stockPerBin = {}; // format: { "barcode": { "bin1": qty, "bin2": qty } }
+      
+      function processSheetForBin(s, multiplier) {
+          if(!s) return;
+          var data = s.getDataRange().getValues();
+          if(data.length <= 1) return;
+          var headers = data[0];
+          if(!headers[0] && !headers[1] && data.length >= 2) headers = data[1];
+          
+          var bcCol = -1, binCol = -1, qtyCol = -1, scanCol = -1;
+          for(var i=0; i<headers.length; i++) {
+              var h = headers[i].toString().trim().toLowerCase();
+              if(h === 'barcode') bcCol = i;
+              if(h === 'scan') scanCol = i;
+              if(h === 'bin/box' || h === 'bin box') binCol = i;
+              if(h.indexOf('qty') !== -1) qtyCol = i;
+          }
+          if((bcCol === -1 && scanCol === -1) || binCol === -1 || qtyCol === -1) return;
+          
+          for(var r=2; r<data.length; r++) {
+              var bc = bcCol !== -1 ? data[r][bcCol] : "";
+              if(!bc && scanCol !== -1) bc = data[r][scanCol];
+              bc = String(bc).trim();
+              var bin = String(data[r][binCol]).trim();
+              var qty = parseInt(data[r][qtyCol]) || 0;
+              
+              if(bc && bin) {
+                  if(!stockPerBin[bc]) stockPerBin[bc] = {};
+                  if(!stockPerBin[bc][bin]) stockPerBin[bc][bin] = 0;
+                  stockPerBin[bc][bin] += (qty * multiplier);
+              }
+          }
+      }
+      
+      processSheetForBin(sheetIn, 1);
+      processSheetForBin(sheetRet, 1);
+      processSheetForBin(sheetOut, -1);
+      
+      // 2. Baca Packing List
+      var packData = sheetPack.getDataRange().getValues();
+      var packHeaders = packData[0];
+      var headerRowIdx = 0;
+      if(!packHeaders[0] && !packHeaders[1] && packData.length >= 2) {
+          packHeaders = packData[1];
+          headerRowIdx = 1;
+      }
+      
+      var pBcCol = -1, pScanCol = -1, pBinCol = -1, pQtyCol = -1;
+      for(var i=0; i<packHeaders.length; i++) {
+          var h = packHeaders[i].toString().trim().toLowerCase();
+          if(h === 'barcode') pBcCol = i;
+          if(h === 'scan') pScanCol = i;
+          if(h === 'bin/box' || h === 'bin box') pBinCol = i;
+          if(h.indexOf('qty') !== -1) pQtyCol = i;
+      }
+      
+      
+      var pItnCol = -1;
+      for(var i=0; i<packHeaders.length; i++) {
+          var h = packHeaders[i].toString().trim().toLowerCase();
+          if(h.indexOf('inventory transfer number') !== -1 || h === 'itn') pItnCol = i;
+      }
+
+      var updates = [];
+      
+      if(pBinCol !== -1) {
+          for(var r=headerRowIdx+1; r<packData.length; r++) {
+              if(itn && pItnCol !== -1) {
+                  var currentItn = String(packData[r][pItnCol]).trim();
+                  if(currentItn.toLowerCase() !== itn.toLowerCase()) continue;
+              }
+              var bc = pBcCol !== -1 ? packData[r][pBcCol] : "";
+              if(!bc && pScanCol !== -1) bc = packData[r][pScanCol];
+              bc = String(bc).trim();
+              
+              var currentBin = String(packData[r][pBinCol]).trim();
+              var requiredQty = parseInt(packData[r][pQtyCol]) || 1;
+              
+              // Jika belum ada Bin/Box, kita assign dari stok yg ada
+              if(currentBin === "" && bc && stockPerBin[bc]) {
+                  var availableBins = stockPerBin[bc];
+                  var assignedBin = "";
+                  
+                  for(var b in availableBins) {
+                      if(availableBins[b] > 0) {
+                          assignedBin = b;
+                          // Kurangi virtual stock agar tidak di-assign ganda jika ada row lain yg butuh
+                          var take = Math.min(availableBins[b], requiredQty);
+                          availableBins[b] -= take;
+                          break;
+                      }
+                  }
+                  
+                  if(assignedBin) {
+                      packData[r][pBinCol] = assignedBin;
+                      // Simpan update untuk di-write ke sheet (r+1 karena 1-based index di sheet)
+                      updates.push({row: r + 1, col: pBinCol + 1, val: assignedBin});
+                  }
+              }
+          }
+      }
+      
+      // 3. Tulis balik ke sheet jika ada update
+      if(updates.length > 0) {
+          for(var u=0; u<updates.length; u++) {
+              sheetPack.getRange(updates[u].row, updates[u].col).setValue(updates[u].val);
+          }
+      }
+      
+      // 4. Generate CSV
+      var csvContent = "";
+      for (var r = 0; r < packData.length; r++) {
+          if(r > headerRowIdx && itn && pItnCol !== -1) {
+              var currentItn = String(packData[r][pItnCol]).trim();
+              if(currentItn.toLowerCase() !== itn.toLowerCase()) continue;
+          }
+          var rowString = packData[r].map(function(cell) {
+              var str = String(cell).replace(/"/g, '""');
+              return '"' + str + '"';
+          }).join(",");
+          csvContent += rowString + "\n";
+      }
+      
+      return ContentService.createTextOutput(csvContent)
+          .setMimeType(ContentService.MimeType.CSV)
+          .downloadAsFile("Packing_List_Auto_Bin.csv");
+  }
+  
   if(action === 'download_csv') {
       var data = sheet.getDataRange().getDisplayValues();
       var csvContent = "";
@@ -336,6 +474,42 @@ function doGet(e) {
   // FITUR PENCARIAN SERVER-SIDE (UNTUK TABEL BESAR)
       var searchQuery = e.parameter.search_table;
     if(searchQuery && searchQuery.trim() !== "") {
+        var allData = sheet.getDataRange().getValues();
+        var searchLower = searchQuery.toLowerCase();
+        
+        // 1. Cek apakah query ini sama persis dengan Barcode (atau Scan) di salah satu baris
+        var targetBinBox = null;
+        var barcodeColIdx = -1;
+        var scanColIdx = -1;
+        var binBoxColIdx = -1;
+        
+        for(var j=0; j<headers.length; j++) {
+            var k = headers[j] ? headers[j].toString().trim().toLowerCase() : "";
+            if(k === 'barcode') barcodeColIdx = j;
+            if(k === 'scan') scanColIdx = j;
+            if(k === 'bin/box' || k === 'bin box') binBoxColIdx = j;
+        }
+        
+        if(binBoxColIdx !== -1) {
+            for(var r = headerRowIdx + 1; r < allData.length; r++) {
+                var bc = barcodeColIdx !== -1 ? String(allData[r][barcodeColIdx]).trim().toLowerCase() : "";
+                var sc = scanColIdx !== -1 ? String(allData[r][scanColIdx]).trim().toLowerCase() : "";
+                if((bc === searchLower && bc !== "") || (sc === searchLower && sc !== "")) {
+                    var binVal = String(allData[r][binBoxColIdx]).trim();
+                    if(binVal !== "") {
+                        targetBinBox = binVal.toLowerCase();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Jika ketemu Bin/Box, kita jadikan itu query utamanya!
+        if (targetBinBox) {
+            searchLower = targetBinBox;
+            searchQuery = targetBinBox;
+        }
+
         var textFinder = sheet.createTextFinder(searchQuery).matchEntireCell(false).matchCase(false);
         var matches = textFinder.findAll();
         var result = [];
@@ -445,6 +619,103 @@ function doPost(e) {
     }
     
     // TAMBAHAN: FITUR UPLOAD BATCH
+    // FAST RAW CSV UPLOAD UNTUK PACKING LIST
+    
+    if (action === 'upload_csv') {
+        var items = request.payload; // array of objects
+        if(!items || !items.length) return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Payload kosong"})).setMimeType(ContentService.MimeType.JSON);
+        
+        var rowsToAppend = items.map(function(item) {
+            var newRow = [];
+            for (var i = 0; i < headers.length; i++) {
+                var sheetHeader = headers[i] ? headers[i].toString().trim() : "";
+                var val = item[sheetHeader];
+                if (val === undefined) {
+                    for(var k in item) {
+                        if(k.trim().toLowerCase() === sheetHeader.toLowerCase()) {
+                            val = item[k]; break;
+                        }
+                    }
+                }
+                newRow.push(val !== undefined ? val : "");
+            }
+            return newRow;
+        });
+        
+        sheet.getRange(lastRow + 1, 1, rowsToAppend.length, headers.length).setValues(rowsToAppend);
+        
+        return ContentService.createTextOutput(JSON.stringify({
+            status: "success",
+            message: rowsToAppend.length + " Baris berhasil diupload dengan cepat!"
+        })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'upload_csv_raw') {
+        var csvText = request.payload;
+        if(csvText) csvText = csvText.replace(/^\uFEFF/, ''); // Remove BOM if exists
+        if(!csvText) return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Payload kosong"})).setMimeType(ContentService.MimeType.JSON);
+        
+        var firstLine = csvText.split('\n')[0] || "";
+        var delimiter = ',';
+        if (firstLine.indexOf(',') === -1 && firstLine.indexOf(';') !== -1) {
+            delimiter = ';';
+        }
+        var csvData = Utilities.parseCsv(csvText, delimiter);
+        if(csvData.length <= 1) return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Data CSV kosong"})).setMimeType(ContentService.MimeType.JSON);
+        
+        // Get CSV headers
+        var csvHeaders = csvData[0];
+        
+        // Remove header row from CSV data
+        csvData.shift(); 
+        
+        if(csvData.length > 0) {
+            // Mapping index berdasarkan nama header
+            var rowsToAppend = csvData.map(function(row) {
+                var newRow = [];
+                for(var i=0; i<headers.length; i++) {
+                    var sheetHeader = headers[i] ? headers[i].toString().trim() : "";
+                    
+                    // Cari header ini di csvHeaders
+                    var csvIdx = -1;
+                    for(var c=0; c<csvHeaders.length; c++) {
+                        if(csvHeaders[c] && csvHeaders[c].toString().trim().toLowerCase() === sheetHeader.toLowerCase()) {
+                            csvIdx = c;
+                            break;
+                        }
+                    }
+                    
+                    if(csvIdx !== -1 && row[csvIdx] !== undefined) {
+                        newRow.push(row[csvIdx]);
+                    } else {
+                        newRow.push("");
+                    }
+                }
+                return newRow;
+            });
+            
+            
+            // Validasi apakah ada data yang berhasil di-mapping
+            var hasData = false;
+            for(var rowIdx=0; rowIdx<Math.min(5, rowsToAppend.length); rowIdx++) {
+                if(rowsToAppend[rowIdx].join("").trim() !== "") {
+                    hasData = true; break;
+                }
+            }
+            if(!hasData) {
+                return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Gagal mapping kolom CSV! Pastikan nama header (Baris ke-1) di file CSV sama persis dengan yang ada di Google Sheet."})).setMimeType(ContentService.MimeType.JSON);
+            }
+            
+            // Check if lastRow < headerRowIdx
+            var targetRow = lastRow > 0 ? lastRow + 1 : 2;
+            if (targetRow <= headerRowIdx) targetRow = headerRowIdx + 1;
+            
+            sheet.getRange(targetRow, 1, rowsToAppend.length, headers.length).setValues(rowsToAppend);
+        }
+        
+        return ContentService.createTextOutput(JSON.stringify({status: "success", message: rowsToAppend.length + " Baris berhasil diupload dengan mode super cepat!"})).setMimeType(ContentService.MimeType.JSON);
+    }
+    
     if (action === 'upload_csv') {
       var rowsToAppend = [];
       var barcodeQtyMap = {};
@@ -494,35 +765,36 @@ function doPost(e) {
              var stkCol = invHeaders.indexOf('Stock');
              
              if(bcCol !== -1 && stkCol !== -1) {
-                 var invData = invLr > invHeaderIdx ? invSheet.getRange(invHeaderIdx + 1, 1, invLr - invHeaderIdx, invLc).getValues() : [];
-                 var updatedData = false;
-                 
-                 for(var r = 0; r < invData.length; r++) {
-                     var b = invData[r][bcCol];
-                     if(b && barcodeQtyMap[b]) {
-                         var addedQty = barcodeQtyMap[b];
-                         
-                         var cIn = parseInt(invData[r][inCol]) || 0;
-                         var cOut = parseInt(invData[r][outCol]) || 0;
-                         var cRet = parseInt(invData[r][retCol]) || 0;
-                         
-                         if(sheetName === 'Inbond') cIn += addedQty;
-                         if(sheetName === 'Outbond') cOut += addedQty;
-                         if(sheetName === 'Return') cRet += addedQty;
-                         
-                         invData[r][inCol] = cIn;
-                         invData[r][outCol] = cOut;
-                         invData[r][retCol] = cRet;
-                         invData[r][stkCol] = cIn - cOut + cRet;
-                         
-                         delete barcodeQtyMap[b]; // mark as processed
-                         updatedData = true;
+                 var bKeys = Object.keys(barcodeQtyMap);
+                 for(var k=0; k<bKeys.length; k++) {
+                     var bStr = bKeys[k];
+                     var qNew = barcodeQtyMap[bStr];
+                     
+                     var tf = invSheet.createTextFinder(String(bStr)).matchEntireCell(true).matchCase(false);
+                     var match = tf.findNext();
+                     
+                     if (match) {
+                         var r = match.getRow();
+                         if (r > invHeaderIdx) {
+                             var rowData = invSheet.getRange(r, 1, 1, invLc).getValues()[0];
+                             
+                             var cIn = parseInt(rowData[inCol]) || 0;
+                             var cOut = parseInt(rowData[outCol]) || 0;
+                             var cRet = parseInt(rowData[retCol]) || 0;
+                             
+                             if(sheetName === 'Inbond') cIn += qNew;
+                             if(sheetName === 'Outbond') cOut += qNew;
+                             if(sheetName === 'Return') cRet += qNew;
+                             
+                             rowData[inCol] = cIn;
+                             rowData[outCol] = cOut;
+                             rowData[retCol] = cRet;
+                             rowData[stkCol] = cIn - cOut + cRet;
+                             
+                             invSheet.getRange(r, 1, 1, invLc).setValues([rowData]);
+                             delete barcodeQtyMap[bStr];
+                         }
                      }
-                 }
-                 
-                 // Write back
-                 if(updatedData && invData.length > 0) {
-                     invSheet.getRange(invHeaderIdx + 1, 1, invData.length, invLc).setValues(invData);
                  }
                  
                  // Append new barcodes not found in Inventory
@@ -599,24 +871,26 @@ function doPost(e) {
              var invStkCol = invHeaders.indexOf('Stock');
              
              if(invBcCol !== -1) {
-                 var invData = invLr > invHeaderIdx ? invSheet.getRange(invHeaderIdx + 1, 1, invLr - invHeaderIdx, invLc).getValues() : [];
-                 for(var r = 0; r < invData.length; r++) {
-                     if(invData[r][invBcCol] == oldBarcode) {
-                         var cIn = parseInt(invData[r][invInCol]) || 0;
-                         var cOut = parseInt(invData[r][invOutCol]) || 0;
-                         var cRet = parseInt(invData[r][invRetCol]) || 0;
+                 var tf = invSheet.createTextFinder(String(oldBarcode)).matchEntireCell(true).matchCase(false);
+                 var match = tf.findNext();
+                 if (match) {
+                     var r = match.getRow();
+                     if (r > invHeaderIdx) {
+                         var rowData = invSheet.getRange(r, 1, 1, invLc).getValues()[0];
+                         var cIn = parseInt(rowData[invInCol]) || 0;
+                         var cOut = parseInt(rowData[invOutCol]) || 0;
+                         var cRet = parseInt(rowData[invRetCol]) || 0;
                          
                          if(sheetName === 'Inbond') cIn -= oldQty;
                          if(sheetName === 'Outbond') cOut -= oldQty;
                          if(sheetName === 'Return') cRet -= oldQty;
                          
-                         invData[r][invInCol] = Math.max(0, cIn);
-                         invData[r][invOutCol] = Math.max(0, cOut);
-                         invData[r][invRetCol] = Math.max(0, cRet);
-                         invData[r][invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
+                         rowData[invInCol] = Math.max(0, cIn);
+                         rowData[invOutCol] = Math.max(0, cOut);
+                         rowData[invRetCol] = Math.max(0, cRet);
+                         rowData[invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
                          
-                         invSheet.getRange(invHeaderIdx + 1 + r, 1, 1, invLc).setValues([invData[r]]);
-                         break;
+                         invSheet.getRange(r, 1, 1, invLc).setValues([rowData]);
                      }
                  }
              }
@@ -671,60 +945,55 @@ function doPost(e) {
              var invStkCol = invHeaders.indexOf('Stock');
              
              if(invBcCol !== -1) {
-                 var invData = invLr > invHeaderIdx ? invSheet.getRange(invHeaderIdx + 1, 1, invLr - invHeaderIdx, invLc).getValues() : [];
+                 // Helper function for TextFinder
+                 function updateInvRow(barcodeToFind, diffObj) {
+                     if(!barcodeToFind) return false;
+                     var tf = invSheet.createTextFinder(String(barcodeToFind)).matchEntireCell(true).matchCase(false);
+                     var match = tf.findNext();
+                     if (match) {
+                         var r = match.getRow();
+                         if (r > invHeaderIdx) {
+                             var rowData = invSheet.getRange(r, 1, 1, invLc).getValues()[0];
+                             var cIn = parseInt(rowData[invInCol]) || 0;
+                             var cOut = parseInt(rowData[invOutCol]) || 0;
+                             var cRet = parseInt(rowData[invRetCol]) || 0;
+                             
+                             cIn += (diffObj.Inbond || 0);
+                             cOut += (diffObj.Outbond || 0);
+                             cRet += (diffObj.Return || 0);
+                             
+                             rowData[invInCol] = Math.max(0, cIn);
+                             rowData[invOutCol] = Math.max(0, cOut);
+                             rowData[invRetCol] = Math.max(0, cRet);
+                             rowData[invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
+                             
+                             invSheet.getRange(r, 1, 1, invLc).setValues([rowData]);
+                             return true;
+                         }
+                     }
+                     return false;
+                 }
                  
                  if(oldBarcode === newBarcode) {
-                     for(var r = 0; r < invData.length; r++) {
-                         if(invData[r][invBcCol] == oldBarcode) {
-                             var diff = newQty - oldQty;
-                             var cIn = parseInt(invData[r][invInCol]) || 0;
-                             var cOut = parseInt(invData[r][invOutCol]) || 0;
-                             var cRet = parseInt(invData[r][invRetCol]) || 0;
-                             
-                             if(sheetName === 'Inbond') cIn += diff;
-                             if(sheetName === 'Outbond') cOut += diff;
-                             if(sheetName === 'Return') cRet += diff;
-                             
-                             invData[r][invInCol] = Math.max(0, cIn);
-                             invData[r][invOutCol] = Math.max(0, cOut);
-                             invData[r][invRetCol] = Math.max(0, cRet);
-                             invData[r][invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
-                             invSheet.getRange(invHeaderIdx + 1 + r, 1, 1, invLc).setValues([invData[r]]);
-                             break;
-                         }
-                     }
+                     var diffObj = { Inbond: 0, Outbond: 0, Return: 0 };
+                     var diff = newQty - oldQty;
+                     if(sheetName === 'Inbond') diffObj.Inbond = diff;
+                     if(sheetName === 'Outbond') diffObj.Outbond = diff;
+                     if(sheetName === 'Return') diffObj.Return = diff;
+                     updateInvRow(oldBarcode, diffObj);
                  } else {
-                     var foundOld = false, foundNew = false;
-                     for(var r = 0; r < invData.length; r++) {
-                         if(invData[r][invBcCol] == oldBarcode) {
-                             foundOld = true;
-                             var cIn = parseInt(invData[r][invInCol]) || 0;
-                             var cOut = parseInt(invData[r][invOutCol]) || 0;
-                             var cRet = parseInt(invData[r][invRetCol]) || 0;
-                             if(sheetName === 'Inbond') cIn -= oldQty;
-                             if(sheetName === 'Outbond') cOut -= oldQty;
-                             if(sheetName === 'Return') cRet -= oldQty;
-                             invData[r][invInCol] = Math.max(0, cIn);
-                             invData[r][invOutCol] = Math.max(0, cOut);
-                             invData[r][invRetCol] = Math.max(0, cRet);
-                             invData[r][invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
-                             invSheet.getRange(invHeaderIdx + 1 + r, 1, 1, invLc).setValues([invData[r]]);
-                         }
-                         if(invData[r][invBcCol] == newBarcode) {
-                             foundNew = true;
-                             var cIn = parseInt(invData[r][invInCol]) || 0;
-                             var cOut = parseInt(invData[r][invOutCol]) || 0;
-                             var cRet = parseInt(invData[r][invRetCol]) || 0;
-                             if(sheetName === 'Inbond') cIn += newQty;
-                             if(sheetName === 'Outbond') cOut += newQty;
-                             if(sheetName === 'Return') cRet += newQty;
-                             invData[r][invInCol] = Math.max(0, cIn);
-                             invData[r][invOutCol] = Math.max(0, cOut);
-                             invData[r][invRetCol] = Math.max(0, cRet);
-                             invData[r][invStkCol] = Math.max(0, cIn) - Math.max(0, cOut) + Math.max(0, cRet);
-                             invSheet.getRange(invHeaderIdx + 1 + r, 1, 1, invLc).setValues([invData[r]]);
-                         }
-                     }
+                     var diffObjOld = { Inbond: 0, Outbond: 0, Return: 0 };
+                     if(sheetName === 'Inbond') diffObjOld.Inbond = -oldQty;
+                     if(sheetName === 'Outbond') diffObjOld.Outbond = -oldQty;
+                     if(sheetName === 'Return') diffObjOld.Return = -oldQty;
+                     updateInvRow(oldBarcode, diffObjOld);
+                     
+                     var diffObjNew = { Inbond: 0, Outbond: 0, Return: 0 };
+                     if(sheetName === 'Inbond') diffObjNew.Inbond = newQty;
+                     if(sheetName === 'Outbond') diffObjNew.Outbond = newQty;
+                     if(sheetName === 'Return') diffObjNew.Return = newQty;
+                     var foundNew = updateInvRow(newBarcode, diffObjNew);
+                     
                      if(!foundNew && newBarcode) {
                          var nr = [];
                          for(var ic=0; ic<invHeaders.length; ic++) {
