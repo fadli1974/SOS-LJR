@@ -2102,6 +2102,5 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
-        });
     }
 });
