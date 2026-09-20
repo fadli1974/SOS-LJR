@@ -1,7 +1,7 @@
 // ==========================================
 // 1. KONFIGURASI GOOGLE APPS SCRIPT
 // ==========================================
-const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbwBPjp5CMk8SCV7vdcw_Y-dXTuQqrHaPmu3nJIxPciaTswr2zYyqAurDYVBLaxoPIyC/exec";
+const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbxHZfOdxp2CLGSGC9MpQi0IXYAi4i-rg5WUZ08xC_OQHwXZ9JlfU-MI-vwBx7jVc2FA/exec";
 
 let preloadedUsers = null;
 let usersFetchPromise = null;
