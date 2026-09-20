@@ -3,6 +3,23 @@
 // ==========================================
 const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbxHZfOdxp2CLGSGC9MpQi0IXYAi4i-rg5WUZ08xC_OQHwXZ9JlfU-MI-vwBx7jVc2FA/exec";
 
+
+// HELPER: Auto-recalculate inventory asynchronously
+async function autoRecalculateInventory(sheetName) {
+    if(!['Inbond', 'Outbond', 'Return'].includes(sheetName)) return;
+    try {
+        const syncBadge = document.getElementById('syncBadge');
+        if(syncBadge) syncBadge.classList.remove('hidden');
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'recalculate' })
+        });
+        tabCache['tab-stock-inventory'] = false;
+        tabCache['tab-dashboard'] = false;
+        if(typeof window.loadDashboardData === 'function') window.loadDashboardData();
+        if(syncBadge) syncBadge.classList.add('hidden');
+    } catch(e) {}
+}
 let preloadedUsers = null;
 let usersFetchPromise = null;
 
@@ -1314,6 +1331,7 @@ if(btnSimpanInbondFinal) {
                 tabCache['tab-inbond'] = false; tabCache['tab-stock-inventory'] = false; tabCache['tab-dashboard'] = false;
                 loadDataForTab('tab-inbond'); window.loadDashboardData();
                 tempInbondList = []; renderTempInbondTable();
+                autoRecalculateInventory('Inbond');
                 document.getElementById('btnToggleForm')?.click();
             } else {
                 alert('Error: ' + res.message);
@@ -1393,6 +1411,7 @@ if(btnSimpanOutbondFinal) {
                 tabCache['tab-outbond'] = false; tabCache['tab-stock-inventory'] = false; tabCache['tab-dashboard'] = false;
                 loadDataForTab('tab-outbond'); window.loadDashboardData();
                 tempOutbondList = []; renderTempOutbondTable();
+                autoRecalculateInventory('Outbond');
                 document.getElementById('btnToggleForm')?.click();
             } else {
                 alert('Error: ' + res.message);
@@ -1472,6 +1491,7 @@ if(btnSimpanReturnFinal) {
                 tabCache['tab-return'] = false; tabCache['tab-stock-inventory'] = false; tabCache['tab-dashboard'] = false;
                 loadDataForTab('tab-return'); window.loadDashboardData();
                 tempReturnList = []; renderTempReturnTable();
+                autoRecalculateInventory('Return');
                 document.getElementById('btnToggleForm')?.click();
             } else {
                 alert('Error: ' + res.message);
