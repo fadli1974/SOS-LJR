@@ -102,7 +102,6 @@ navItems.forEach(item => {
     const btnUpload = document.getElementById('btnUploadCsv');
     const btnTemplate = document.getElementById('btnDownloadTemplate');
     const btnDownload = document.getElementById('btnDownloadFile');
-    const btnDownload = document.getElementById('btnDownloadFile');
     const headerDateFilter = document.getElementById('headerDateFilter');
     const btnSync = document.getElementById('btnSyncInventory');
     const btnToggleForm = document.getElementById('btnToggleForm');
