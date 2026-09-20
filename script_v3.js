@@ -101,6 +101,7 @@ navItems.forEach(item => {
     // Toggle Upload, Template, and Date Filter buttons
     const btnUpload = document.getElementById('btnUploadCsv');
     const btnTemplate = document.getElementById('btnDownloadTemplate');
+    const btnDownload = document.getElementById('btnDownloadFile');
     const headerDateFilter = document.getElementById('headerDateFilter');
     const btnSync = document.getElementById('btnSyncInventory');
     const btnToggleForm = document.getElementById('btnToggleForm');
@@ -156,6 +157,7 @@ navItems.forEach(item => {
         } else {
             btnUpload.classList.add('hidden');
             btnTemplate.classList.add('hidden');
+            if(targetId !== 'tab-dashboard' && btnDownload) btnDownload.classList.remove('hidden');
         }
     }
     
@@ -290,7 +292,7 @@ function renderPackingListRows(data, tbody) {
                 <td class="p-3">${d.Colour || ''}</td>
                 <td class="p-3">${d.Size || ''}</td>
                 <td class="p-3">${d.Price || ''}</td>
-                <td class="p-3 font-bold text-center bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200">${d.Qty || ''}</td>
+                <td class="p-3">${d.Qty || ''}</td>
                 <td class="p-3">${d['Bin/Box'] || d.Bin || ''}</td>
                 <td class="p-3">${d.ITN || d.IT || d['Inventory Transfer Number'] || ''}</td>
                 <td class="p-3">${d.From || d['From Location'] || ''}</td>
