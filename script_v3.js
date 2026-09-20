@@ -28,7 +28,7 @@ window.preloadUsers();
     try {
         const res = await fetch(SCRIPT_URL + "?action=download_packing_list&sheet=Packing%20List");
         const text = await res.text();
-        if (text === "[]") {
+        if (text.startsWith("[")) {
             Swal.fire({
                 title: 'CRITICAL UPDATE REQUIRED!',
                 html: `<div style="text-align: left; font-size: 14px;">
@@ -2088,7 +2088,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     for(let i=0; i < allData.length; i += chunkSize) {
                         const chunk = allData.slice(i, i + chunkSize);
-                        btnUploadPack.innerHTML = `<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Uploading ${i+chunk.length} / ${allData.length} ...`;
+                        let pct = Math.round(((i + chunk.length) / allData.length) * 100);
+                        btnUploadPack.innerHTML = `<i data-lucide="loader-2" class="w-6 h-6 mr-3 animate-spin"></i> Uploading ${pct}% (${i+chunk.length} dari ${allData.length}) ...`;
                         
                         const res = await fetch(SCRIPT_URL, {
                             method: 'POST',
