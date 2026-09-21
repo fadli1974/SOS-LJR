@@ -768,7 +768,12 @@
 
         <div id="tab-users" class="tab-content hidden animate-slide-in">
           <div class="panel">
-            <div class="panel-header"><h3 class="panel-title text-sm">Data Users</h3></div>
+            <div class="panel-header flex justify-between items-center">
+                <h3 class="panel-title text-sm">Data Users</h3>
+                <button id="btnAddUser" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center transition-colors">
+                    <i data-lucide="plus" class="w-3.5 h-3.5 mr-1"></i> Tambah User
+                </button>
+            </div>
             <div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar">
               <table class="w-full text-left border-collapse whitespace-nowrap">
                 <thead class="sticky top-0 z-10">
@@ -777,6 +782,7 @@
                     <th class="px-4 py-4 font-bold">Nama</th>
                     <th class="px-4 py-4 font-bold">Email</th>
                     <th class="px-4 py-4 font-bold">Role</th>
+                    <th class="px-4 py-4 font-bold text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-[#2b2b40] text-sm bg-white dark:bg-[#1e1e2d]">
@@ -846,7 +852,57 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="script_v3.js?v=1790013256152"></script>
+    <script src="script_v3.js?v=1790014264107"></script>
+
+  <!-- MODAL USER -->
+  <div id="modalUser" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 animate-fade-in px-4">
+      <div class="bg-white dark:bg-[#1e1e2d] rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-slide-up">
+          <div class="px-6 py-4 border-b border-gray-100 dark:border-[#2b2b40] flex justify-between items-center">
+              <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100" id="modalUserTitle">Tambah User Baru</h3>
+              <button id="btnCloseModalUser" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                  <i data-lucide="x" class="w-5 h-5"></i>
+              </button>
+          </div>
+          <form id="formUser" class="p-6 space-y-4">
+              <input type="hidden" id="user_action_type" value="add">
+              <div>
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">ID User (Harus Unik)</label>
+                  <input type="text" id="user_id" required class="w-full form-input bg-gray-50 focus:bg-white" placeholder="Contoh: 2021-1515">
+              </div>
+              <div>
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Nama</label>
+                  <input type="text" id="user_nama" required class="w-full form-input bg-gray-50 focus:bg-white" placeholder="Nama Lengkap">
+              </div>
+              <div>
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                  <input type="email" id="user_email" class="w-full form-input bg-gray-50 focus:bg-white" placeholder="email@contoh.com">
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                  <div>
+                      <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Jabatan</label>
+                      <input type="text" id="user_jabatan" class="w-full form-input bg-gray-50 focus:bg-white" placeholder="Staff">
+                  </div>
+                  <div>
+                      <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Role (Hak Akses)</label>
+                      <select id="user_role" required class="w-full form-input bg-gray-50 focus:bg-white cursor-pointer">
+                          <option value="Staff">Staff</option>
+                          <option value="Admin">Admin</option>
+                      </select>
+                  </div>
+              </div>
+              <div>
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                  <input type="text" id="user_password" required class="w-full form-input bg-gray-50 focus:bg-white" placeholder="Minimal 6 karakter">
+              </div>
+              <div class="pt-2">
+                  <button type="submit" id="btnSaveUser" class="w-full bg-[#0a4d3c] hover:bg-[#083a2d] text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center">
+                      <i data-lucide="save" class="w-4 h-4 mr-2"></i> Simpan Data User
+                  </button>
+              </div>
+          </form>
+      </div>
+  </div>
+
 </body>
 </html>
 

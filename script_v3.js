@@ -653,7 +653,11 @@ function loginSukses() {
     const role = localStorage.getItem('userRole');
     const masterNav = document.getElementById('navMasterDataTab');
     if(masterNav) {
-        if(role === 'Admin') masterNav.classList.remove('hidden');
+        if(role === 'Admin') {
+            masterNav.classList.remove('hidden');
+            const navU = document.getElementById('navUsersTab');
+            if(navU) navU.classList.remove('hidden');
+        }
         else masterNav.classList.add('hidden');
     }
 
@@ -2348,4 +2352,178 @@ if(verifScanEl) {
         handleVerifikasiScan(this);
     });
 }
+
+
+// ==========================================
+// FITUR MANAJEMEN USERS (CRUD) KHUSUS ADMIN
+// ==========================================
+function renderUsersTable() {
+    const tbody = document.querySelector('#tab-users tbody');
+    if(!tbody || !preloadedUsers) return;
+    
+    let html = '';
+    preloadedUsers.forEach(u => {
+        // Skip header if it's there
+        if(u['ID User'] === 'ID User') return;
+        
+        let roleBadge = u['Role'] === 'Admin' 
+            ? '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">Admin</span>'
+            : '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold">Staff</span>';
+            
+        html += `
+            <tr class="hover:bg-gray-50 dark:hover:bg-[#2b2b40] transition-colors">
+                <td class="px-4 py-4 font-mono">${u['ID User'] || ''}</td>
+                <td class="px-4 py-4 font-bold">${u['Nama'] || ''}</td>
+                <td class="px-4 py-4 text-gray-500">${u['Email'] || ''}</td>
+                <td class="px-4 py-4">${roleBadge}</td>
+                <td class="px-4 py-4 text-center">
+                    <button onclick="editUser('${u['ID User']}')" class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 p-1.5 rounded mr-1 transition-colors" title="Edit">
+                        <i data-lucide="edit-2" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="deleteUser('${u['ID User']}')" class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors" title="Hapus">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+    if(window.lucide) window.lucide.createIcons();
+}
+
+document.getElementById('navUsersTab')?.addEventListener('click', () => {
+    renderUsersTable();
+});
+
+document.getElementById('btnAddUser')?.addEventListener('click', () => {
+    document.getElementById('modalUserTitle').innerText = "Tambah User Baru";
+    document.getElementById('user_action_type').value = "add";
+    document.getElementById('user_id').readOnly = false;
+    document.getElementById('user_id').classList.remove('bg-gray-200');
+    document.getElementById('formUser').reset();
+    document.getElementById('modalUser').classList.remove('hidden');
+    document.getElementById('modalUser').classList.add('flex');
+});
+
+document.getElementById('btnCloseModalUser')?.addEventListener('click', () => {
+    document.getElementById('modalUser').classList.add('hidden');
+    document.getElementById('modalUser').classList.remove('flex');
+});
+
+window.editUser = function(id) {
+    const u = preloadedUsers.find(x => x['ID User'] == id);
+    if(!u) return;
+    
+    document.getElementById('modalUserTitle').innerText = "Edit User";
+    document.getElementById('user_action_type').value = "update_row";
+    document.getElementById('user_id').value = u['ID User'] || '';
+    document.getElementById('user_id').readOnly = true;
+    document.getElementById('user_id').classList.add('bg-gray-200'); // Cannot change ID
+    
+    document.getElementById('user_nama').value = u['Nama'] || '';
+    document.getElementById('user_email').value = u['Email'] || '';
+    document.getElementById('user_jabatan').value = u['Jabatan'] || '';
+    document.getElementById('user_role').value = u['Role'] || 'Staff';
+    document.getElementById('user_password').value = u['Password'] || '';
+    
+    document.getElementById('modalUser').classList.remove('hidden');
+    document.getElementById('modalUser').classList.add('flex');
+};
+
+window.deleteUser = async function(id) {
+    if(!confirm('Yakin ingin menghapus user ' + id + '?')) return;
+    
+    try {
+        const payloadStr = JSON.stringify({
+            action: 'delete_row',
+            sheet: 'Users',
+            keyColName: 'ID User',
+            keyValue: id
+        });
+        
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: payloadStr
+        });
+        const res = await resp.json();
+        if(res.status === 'success') {
+            // Remove locally
+            preloadedUsers = preloadedUsers.filter(x => x['ID User'] != id);
+            renderUsersTable();
+            alert('User berhasil dihapus');
+        } else {
+            alert('Gagal hapus: ' + res.message);
+        }
+    } catch(err) {
+        alert('Gagal: ' + err.message);
+    }
+};
+
+document.getElementById('formUser')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const actionType = document.getElementById('user_action_type').value;
+    const btn = document.getElementById('btnSaveUser');
+    const originalText = btn.innerHTML;
+    
+    const id = document.getElementById('user_id').value.trim();
+    const nama = document.getElementById('user_nama').value.trim();
+    const email = document.getElementById('user_email').value.trim();
+    const jabatan = document.getElementById('user_jabatan').value.trim();
+    const role = document.getElementById('user_role').value;
+    const pass = document.getElementById('user_password').value;
+    
+    if(!id || !nama || !pass) return alert("ID, Nama, dan Password wajib diisi!");
+    
+    btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Menyimpan...';
+    if(window.lucide) window.lucide.createIcons();
+    btn.disabled = true;
+    
+    const rowData = {
+        'ID User': id,
+        'Nama': nama,
+        'Email': email,
+        'Jabatan': jabatan,
+        'Password': pass,
+        'Role': role
+    };
+    
+    const payloadReq = {
+        action: actionType,
+        sheet: 'Users',
+        payload: rowData
+    };
+    
+    if(actionType === 'update_row') {
+        payloadReq.keyColName = 'ID User';
+        payloadReq.keyValue = id;
+    }
+    
+    try {
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify(payloadReq)
+        });
+        const res = await resp.json();
+        
+        if(res.status === 'success') {
+            if(actionType === 'add') {
+                preloadedUsers.push(rowData);
+            } else {
+                let idx = preloadedUsers.findIndex(x => x['ID User'] == id);
+                if(idx !== -1) preloadedUsers[idx] = rowData;
+            }
+            renderUsersTable();
+            document.getElementById('btnCloseModalUser').click();
+            alert('User berhasil disimpan');
+        } else {
+            alert('Gagal simpan: ' + res.message);
+        }
+    } catch(err) {
+        alert('Gagal: ' + err.message);
+    } finally {
+        btn.innerHTML = originalText;
+        if(window.lucide) window.lucide.createIcons();
+        btn.disabled = false;
+    }
+});
 
