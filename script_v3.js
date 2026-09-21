@@ -153,6 +153,10 @@ navItems.forEach(item => {
         } else {
             document.getElementById('headerPackDropdown')?.classList.add('hidden');
         }
+        
+        if(targetId === 'tab-verifikasi') {
+            populatePackingListDropdown();
+        }
 
         if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman', 'tab-packing-list'].includes(targetId)) {
             btnToggleForm.classList.remove('hidden');
@@ -2541,9 +2545,10 @@ document.getElementById('formUser')?.addEventListener('submit', async (e) => {
 
 async function populatePackingListDropdown() {
     const dropdown = document.getElementById('headerPackDropdown');
-    if(!dropdown) return;
+    const verifDropdown = document.getElementById('verifikasi_itn');
     
-    dropdown.innerHTML = '<option value="">Sedang memuat daftar PL...</option>';
+    if(dropdown) dropdown.innerHTML = '<option value="">Sedang memuat daftar PL...</option>';
+    if(verifDropdown) verifDropdown.innerHTML = '<option value="">Sedang memuat daftar PL...</option>';
     
     try {
         const resp = await fetch(SCRIPT_URL + "?action=get_packing_list_options&sheet=Packing%20List");
@@ -2555,10 +2560,12 @@ async function populatePackingListDropdown() {
                 html += `<option value="${opt.itn}">${opt.itn}${opt.store ? ' - ' + opt.store : ''}</option>`;
             });
         }
-        dropdown.innerHTML = html;
+        if(dropdown) dropdown.innerHTML = html;
+        if(verifDropdown) verifDropdown.innerHTML = html;
     } catch(err) {
         console.error("Gagal load dropdown packing list", err);
-        dropdown.innerHTML = '<option value="">Pilih PL / Store...</option>';
+        if(dropdown) dropdown.innerHTML = '<option value="">Pilih PL / Store...</option>';
+        if(verifDropdown) verifDropdown.innerHTML = '<option value="">Pilih PL / Store...</option>';
     }
 }
 

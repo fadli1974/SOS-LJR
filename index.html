@@ -721,7 +721,9 @@
             <div class="flex flex-col md:flex-row gap-4 mb-4">
                 <div class="flex-1">
                     <label class="block text-xs font-medium text-gray-600 mb-1">Nomor Packing List / ITN</label>
-                    <input type="text" id="verifikasi_itn" class="w-full form-input" placeholder="Contoh: PL022">
+                    <select id="verifikasi_itn" class="w-full form-input bg-white cursor-pointer">
+                        <option value="">Sedang memuat daftar PL...</option>
+                    </select>
                 </div>
                 <div class="flex items-end">
                     <button id="btnTarikPackingList" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium shadow-sm transition-all flex items-center h-[42px]">
@@ -855,7 +857,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="script_v3.js?v=1790016479897"></script>
+    <script src="script_v3.js?v=1790016808761"></script>
 
   <!-- MODAL USER -->
   <div id="modalUser" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 animate-fade-in px-4">
