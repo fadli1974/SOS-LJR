@@ -167,7 +167,7 @@ navItems.forEach(item => {
     }
     if(btnUpload && btnTemplate) {
         if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman', 'tab-packing-list'].includes(targetId)) {
-            if (targetId !== 'tab-packing-list') {
+            if (targetId !== 'tab-packing-list' && targetId !== 'tab-verifikasi') {
                 btnUpload.classList.remove('hidden');
                 btnTemplate.classList.remove('hidden');
                 if (btnDownload) btnDownload.classList.remove('hidden');
@@ -2141,3 +2141,191 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ==========================================
+// FITUR VERIFIKASI PACKING LIST
+// ==========================================
+let verifikasiData = {}; // format: { "barcode1": { expected: 5, scanned: 0, brand: "...", desc: "..." } }
+
+document.getElementById('btnTarikPackingList')?.addEventListener('click', async () => {
+    const itn = document.getElementById('verifikasi_itn').value.trim();
+    if(!itn) return alert("Masukkan Nomor Packing List / ITN");
+    
+    const btn = document.getElementById('btnTarikPackingList');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Menarik Data...`;
+    if(window.lucide) window.lucide.createIcons();
+    btn.disabled = true;
+    
+    try {
+        const resp = await fetch(SCRIPT_URL + "?action=get_packing_list_json&itn=" + encodeURIComponent(itn));
+        const data = await resp.json();
+        
+        if(!Array.isArray(data) || data.length === 0) {
+            alert("Data Packing List tidak ditemukan untuk ITN tersebut.");
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+        
+        // Aggregate expected quantities by barcode
+        verifikasiData = {};
+        data.forEach(row => {
+            let barcode = "";
+            let brand = "";
+            let desc = "";
+            let qty = 1;
+            
+            // Find columns flexibly
+            for(let key in row) {
+                let k = key.toLowerCase();
+                if(k === 'barcode' || k === 'scan') {
+                    if(!barcode) barcode = String(row[key]).trim();
+                }
+                if(k === 'brand') brand = String(row[key]);
+                if(k === 'description' || k === 'desc') desc = String(row[key]);
+                if(k.includes('qty')) qty = parseInt(row[key]) || 1;
+            }
+            
+            if(barcode) {
+                if(!verifikasiData[barcode]) {
+                    verifikasiData[barcode] = { expected: 0, scanned: 0, brand: brand, desc: desc, barcode: barcode };
+                }
+                verifikasiData[barcode].expected += qty;
+            }
+        });
+        
+        document.getElementById('verifikasiArea').classList.remove('hidden');
+        document.getElementById('lblVerifikasiTitle').innerText = "Progress Verifikasi: " + itn;
+        
+        renderVerifikasiTable();
+        
+        const scanInput = document.getElementById('verifikasi_scan');
+        scanInput.value = "";
+        scanInput.focus();
+        
+        document.getElementById('verifikasi_alert').innerText = "Data siap di-scan!";
+        document.getElementById('verifikasi_alert').className = "mt-4 text-lg font-bold h-8 text-indigo-600";
+        
+    } catch(err) {
+        alert("Gagal menarik data: " + err.message);
+    } finally {
+        btn.innerHTML = originalText;
+        if(window.lucide) window.lucide.createIcons();
+        btn.disabled = false;
+    }
+});
+
+function renderVerifikasiTable() {
+    const tbody = document.getElementById('verifikasiTableBody');
+    if(!tbody) return;
+    
+    let html = "";
+    let totalItems = 0;
+    let completedItems = 0;
+    
+    for(let bc in verifikasiData) {
+        let item = verifikasiData[bc];
+        totalItems++;
+        
+        let statusHtml = '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-bold">BELUM</span>';
+        let rowClass = "";
+        
+        if(item.scanned === item.expected && item.expected > 0) {
+            statusHtml = '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">LENGKAP</span>';
+            rowClass = "bg-green-50";
+            completedItems++;
+        } else if(item.scanned > 0) {
+            statusHtml = '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-bold">PROSES</span>';
+            rowClass = "bg-yellow-50";
+        }
+        
+        html += `
+            <tr class="${rowClass}">
+                <td class="px-6 py-4">${item.brand}</td>
+                <td class="px-6 py-4 font-mono font-bold">${item.barcode}</td>
+                <td class="px-6 py-4">${item.desc}</td>
+                <td class="px-6 py-4 text-center font-bold text-lg">${item.expected}</td>
+                <td class="px-6 py-4 text-center font-bold text-lg ${item.scanned > 0 ? 'text-indigo-600' : ''}">${item.scanned}</td>
+                <td class="px-6 py-4 text-center">${statusHtml}</td>
+            </tr>
+        `;
+    }
+    
+    tbody.innerHTML = html;
+    
+    const progressEl = document.getElementById('lblVerifikasiProgress');
+    if(progressEl) {
+        progressEl.innerText = `${completedItems} / ${totalItems} SKU Lengkap`;
+        if(completedItems === totalItems && totalItems > 0) {
+            progressEl.className = "text-sm font-bold px-3 py-1 bg-green-500 text-white rounded-full border border-green-600";
+            document.getElementById('verifikasi_alert').innerText = "✅ SEMUA BARANG SUDAH LENGKAP!";
+            document.getElementById('verifikasi_alert').className = "mt-4 text-lg font-bold h-8 text-green-600";
+            playBeep('success');
+        } else {
+            progressEl.className = "text-sm font-bold px-3 py-1 bg-white text-gray-700 rounded-full border border-gray-200";
+        }
+    }
+}
+
+function playBeep(type) {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        if (type === 'error') {
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(200, audioCtx.currentTime); // Low pitch beep
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.3);
+        } else if (type === 'success') {
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // High pitch beep
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            oscillator.start();
+            oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+            oscillator.stop(audioCtx.currentTime + 0.2);
+        } else if (type === 'scan') {
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+    } catch(e) {}
+}
+
+document.getElementById('verifikasi_scan')?.addEventListener('keydown', function(e) {
+    if(e.key === 'Enter') {
+        e.preventDefault();
+        const bc = this.value.trim();
+        this.value = '';
+        
+        if(!bc) return;
+        
+        const alertEl = document.getElementById('verifikasi_alert');
+        
+        if(verifikasiData[bc]) {
+            if(verifikasiData[bc].scanned < verifikasiData[bc].expected) {
+                verifikasiData[bc].scanned++;
+                playBeep('scan');
+                alertEl.innerText = `✓ Scan OK: ${bc}`;
+                alertEl.className = "mt-4 text-lg font-bold h-8 text-green-600";
+                renderVerifikasiTable();
+            } else {
+                playBeep('error');
+                alertEl.innerText = `⚠️ OVER QTY: ${bc} (Sudah Pas!)`;
+                alertEl.className = "mt-4 text-lg font-bold h-8 text-red-600";
+            }
+        } else {
+            playBeep('error');
+            alertEl.innerText = `❌ TIDAK DITEMUKAN: ${bc}`;
+            alertEl.className = "mt-4 text-lg font-bold h-8 text-red-600";
+        }
+    }
+});
+
