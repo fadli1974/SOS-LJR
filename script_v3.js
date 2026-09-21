@@ -149,6 +149,21 @@ navItems.forEach(item => {
         if(targetId === 'tab-pengiriman') txt = 'INPUT PENGIRIMAN';
         if(targetId === 'tab-packing-list') txt = 'INPUT PACKING LIST';
 
+        if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman', 'tab-packing-list'].includes(targetId)) {
+            btnToggleForm.classList.remove('hidden');
+        } else {
+            btnToggleForm.classList.add('hidden');
+        }
+        
+        // Selalu tutup form saat pindah tab
+        ['Inbond', 'Outbond', 'Return', 'Pengiriman', 'PackingList'].forEach(t => {
+            const p = document.getElementById('panelForm' + t);
+            if(p) p.classList.add('hidden');
+        });
+        btnToggleForm.innerHTML = `<i data-lucide="scan-line" class="w-4 h-4 mr-2"></i> <span id="lblToggleForm">${txt}</span>`;
+        btnToggleForm.classList.remove('bg-red-600', 'hover:bg-red-700');
+        btnToggleForm.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+        if(window.lucide) window.lucide.createIcons();
     }
     if(btnUpload && btnTemplate) {
         if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman', 'tab-packing-list'].includes(targetId)) {
