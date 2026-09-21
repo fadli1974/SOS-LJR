@@ -2299,33 +2299,43 @@ function playBeep(type) {
     } catch(e) {}
 }
 
-document.getElementById('verifikasi_scan')?.addEventListener('keydown', function(e) {
-    if(e.key === 'Enter') {
-        e.preventDefault();
-        const bc = this.value.trim();
-        this.value = '';
-        
-        if(!bc) return;
-        
-        const alertEl = document.getElementById('verifikasi_alert');
-        
-        if(verifikasiData[bc]) {
-            if(verifikasiData[bc].scanned < verifikasiData[bc].expected) {
-                verifikasiData[bc].scanned++;
-                playBeep('scan');
-                alertEl.innerText = `✓ Scan OK: ${bc}`;
-                alertEl.className = "mt-4 text-lg font-bold h-8 text-green-600";
-                renderVerifikasiTable();
-            } else {
-                playBeep('error');
-                alertEl.innerText = `⚠️ OVER QTY: ${bc} (Sudah Pas!)`;
-                alertEl.className = "mt-4 text-lg font-bold h-8 text-red-600";
-            }
+function handleVerifikasiScan(inputEl) {
+    const bc = inputEl.value.trim();
+    inputEl.value = '';
+    
+    if(!bc) return;
+    
+    const alertEl = document.getElementById('verifikasi_alert');
+    
+    if(verifikasiData[bc]) {
+        if(verifikasiData[bc].scanned < verifikasiData[bc].expected) {
+            verifikasiData[bc].scanned++;
+            playBeep('scan');
+            alertEl.innerText = `✓ Scan OK: ${bc}`;
+            alertEl.className = "mt-4 text-lg font-bold h-8 text-green-600";
+            renderVerifikasiTable();
         } else {
             playBeep('error');
-            alertEl.innerText = `❌ TIDAK DITEMUKAN: ${bc}`;
+            alertEl.innerText = `⚠️ OVER QTY: ${bc} (Sudah Pas!)`;
             alertEl.className = "mt-4 text-lg font-bold h-8 text-red-600";
         }
+    } else {
+        playBeep('error');
+        alertEl.innerText = `❌ TIDAK DITEMUKAN: ${bc}`;
+        alertEl.className = "mt-4 text-lg font-bold h-8 text-red-600";
     }
-});
+}
+
+const verifScanEl = document.getElementById('verifikasi_scan');
+if(verifScanEl) {
+    verifScanEl.addEventListener('keydown', function(e) {
+        if(e.key === 'Enter') {
+            e.preventDefault();
+            handleVerifikasiScan(this);
+        }
+    });
+    verifScanEl.addEventListener('change', function(e) {
+        handleVerifikasiScan(this);
+    });
+}
 
