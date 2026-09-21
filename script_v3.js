@@ -150,8 +150,12 @@ navItems.forEach(item => {
         if(targetId === 'tab-packing-list') {
             txt = 'INPUT PACKING LIST';
             document.getElementById('headerPackDropdown')?.classList.remove('hidden');
+            const gs = document.getElementById('globalSearchContainer');
+            if(gs) { gs.classList.add('hidden'); gs.classList.remove('flex'); }
         } else {
             document.getElementById('headerPackDropdown')?.classList.add('hidden');
+            const gs = document.getElementById('globalSearchContainer');
+            if(gs) { gs.classList.remove('hidden'); gs.classList.add('flex'); }
         }
         
         if(targetId === 'tab-verifikasi') {
