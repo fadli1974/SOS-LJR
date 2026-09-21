@@ -723,7 +723,7 @@ async function fetchSheet(sheetName, tbodyId, renderFunc) {
                     if(renderFunc) renderFunc(data, tbody);
                     if(window.lucide) window.lucide.createIcons();
                     if(sheetName === 'Packing List') {
-                        populatePackingListDropdown(data);
+                        populatePackingListDropdown();
                     }
                 } else {
                     tbody.innerHTML = `<tr><td colspan="20" class="p-6 text-center text-gray-500">Tidak ada data di tab ${sheetName}</td></tr>`;
@@ -788,7 +788,7 @@ async function fetchSheet(sheetName, tbodyId, renderFunc) {
           }
       }
       if(sheetName === 'Packing List') {
-          populatePackingListDropdown(dataReversed);
+          populatePackingListDropdown();
       }
       return dataReversed;
     } catch (e) {
@@ -2539,41 +2539,26 @@ document.getElementById('formUser')?.addEventListener('submit', async (e) => {
 });
 
 
-function populatePackingListDropdown(data) {
+async function populatePackingListDropdown() {
     const dropdown = document.getElementById('headerPackDropdown');
     if(!dropdown) return;
     
-    const map = {};
-    data.forEach(row => {
-        let itn = "";
-        let store = "";
-        for(let k in row) {
-            const kl = k.trim().toLowerCase();
-            // Cek berbagai kemungkinan nama kolom ITN
-            if(kl.includes('inventory transfer number') || kl.includes('itn') || kl === 'inventorytransfernumber') {
-                itn = String(row[k]).trim();
-            }
-            // Cek berbagai kemungkinan nama kolom Store/To Location
-            if(kl.includes('to location') || kl === 'to' || kl.includes('store') || kl === 'tolocation') {
-                store = String(row[k]).trim();
-            }
-        }
-        if(itn && !map[itn]) {
-            map[itn] = store;
-        }
-    });
+    dropdown.innerHTML = '<option value="">Sedang memuat daftar PL...</option>';
     
-    let html = '<option value="">Pilih PL / Store...</option>';
-    let count = 0;
-    for(let itn in map) {
-        html += `<option value="${itn}">${itn}${map[itn] ? ' - ' + map[itn] : ''}</option>`;
-        count++;
-    }
-    dropdown.innerHTML = html;
-    
-    // Debug info jika masih kosong
-    if (count === 0 && data.length > 0) {
-        console.warn("DEBUG PACKING LIST DROPDOWN: keys in first row are", Object.keys(data[0]));
+    try {
+        const resp = await fetch(SCRIPT_URL + "?action=get_packing_list_options&sheet=Packing%20List");
+        const options = await resp.json();
+        
+        let html = '<option value="">Pilih PL / Store...</option>';
+        if(options && options.length > 0) {
+            options.forEach(opt => {
+                html += `<option value="${opt.itn}">${opt.itn}${opt.store ? ' - ' + opt.store : ''}</option>`;
+            });
+        }
+        dropdown.innerHTML = html;
+    } catch(err) {
+        console.error("Gagal load dropdown packing list", err);
+        dropdown.innerHTML = '<option value="">Pilih PL / Store...</option>';
     }
 }
 
