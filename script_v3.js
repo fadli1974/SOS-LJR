@@ -810,7 +810,8 @@ async function fetchSheet(sheetName, tbodyId, renderFunc) {
 async function postData(action, sheetName, payload) {
   try {
     const response = await fetch(SCRIPT_URL, {
-      method:"POST",
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action: action, sheet: sheetName, payload: payload })
     });
     return await response.json();
@@ -2462,6 +2463,7 @@ window.deleteUser = async function(id) {
         
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: payloadStr
         });
         const res = await resp.json();
@@ -2520,6 +2522,7 @@ document.getElementById('formUser')?.addEventListener('submit', async (e) => {
     try {
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(payloadReq)
         });
         const res = await resp.json();
@@ -2582,5 +2585,35 @@ document.getElementById('headerPackDropdown')?.addEventListener('change', functi
         if(typeof executeGlobalSearch === 'function') {
             executeGlobalSearch();
         }
+    }
+});
+
+
+// Auto-login check on page load
+document.addEventListener('DOMContentLoaded', () => {
+    if(localStorage.getItem('currentUser')) {
+        const loginContainer = document.getElementById('loginContainer');
+        const appContainer = document.getElementById('appContainer');
+        if(loginContainer) loginContainer.classList.add('hidden');
+        if(appContainer) appContainer.classList.remove('hidden');
+        
+        const role = localStorage.getItem('userRole');
+        const masterNav = document.getElementById('navMasterDataTab');
+        if(masterNav) {
+            if(role === 'Admin') {
+                masterNav.classList.remove('hidden');
+                const navU = document.getElementById('navUsersTab');
+                if(navU) navU.classList.remove('hidden');
+            } else {
+                masterNav.classList.add('hidden');
+            }
+        }
+
+        const pName = document.getElementById('profileName');
+        const pEmail = document.getElementById('profileEmail');
+        if(pName) pName.innerText = localStorage.getItem('currentUser');
+        if(pEmail) pEmail.innerText = localStorage.getItem('userEmail') || '';
+        
+        loadDataForTab('tab-dashboard');
     }
 });
