@@ -2564,11 +2564,12 @@ async function populatePackingListDropdown() {
 
 document.getElementById('headerPackDropdown')?.addEventListener('change', function(e) {
     const val = this.value;
-    const searchInput = document.getElementById('searchInput');
-    const btnSearch = document.getElementById('btnSearchGlobal');
+    const searchInput = document.getElementById('globalSearch');
     
-    if(searchInput && btnSearch) {
+    if(searchInput) {
         searchInput.value = val;
-        btnSearch.click(); // Trigger the global search automatically!
+        if(typeof executeGlobalSearch === 'function') {
+            executeGlobalSearch();
+        }
     }
 });
