@@ -147,7 +147,12 @@ navItems.forEach(item => {
         if(targetId === 'tab-outbond') txt = 'SCAN OUTBOND';
         if(targetId === 'tab-return') txt = 'SCAN RETURN';
         if(targetId === 'tab-pengiriman') txt = 'INPUT PENGIRIMAN';
-        if(targetId === 'tab-packing-list') txt = 'INPUT PACKING LIST';
+        if(targetId === 'tab-packing-list') {
+            txt = 'INPUT PACKING LIST';
+            document.getElementById('headerPackDropdown')?.classList.remove('hidden');
+        } else {
+            document.getElementById('headerPackDropdown')?.classList.add('hidden');
+        }
 
         if(['tab-inbond', 'tab-outbond', 'tab-return', 'tab-pengiriman', 'tab-packing-list'].includes(targetId)) {
             btnToggleForm.classList.remove('hidden');
@@ -778,6 +783,9 @@ async function fetchSheet(sheetName, tbodyId, renderFunc) {
               renderFunc(dataReversed, tbody);
               if(window.lucide) window.lucide.createIcons();
           }
+      }
+      if(tabId === 'tab-packing-list') {
+          populatePackingListDropdown(dataReversed);
       }
       return dataReversed;
     } catch (e) {
@@ -2527,3 +2535,39 @@ document.getElementById('formUser')?.addEventListener('submit', async (e) => {
     }
 });
 
+
+function populatePackingListDropdown(data) {
+    const dropdown = document.getElementById('headerPackDropdown');
+    if(!dropdown) return;
+    
+    const map = {};
+    data.forEach(row => {
+        let itn = "";
+        let store = "";
+        for(let k in row) {
+            const kl = k.toLowerCase();
+            if(kl.includes('inventory transfer number') || kl === 'itn') itn = String(row[k]).trim();
+            if(kl === 'to location' || kl === 'to') store = String(row[k]).trim();
+        }
+        if(itn && !map[itn]) {
+            map[itn] = store;
+        }
+    });
+    
+    let html = '<option value="">Pilih PL / Store...</option>';
+    for(let itn in map) {
+        html += `<option value="${itn}">${itn}${map[itn] ? ' - ' + map[itn] : ''}</option>`;
+    }
+    dropdown.innerHTML = html;
+}
+
+document.getElementById('headerPackDropdown')?.addEventListener('change', function(e) {
+    const val = this.value;
+    const searchInput = document.getElementById('searchInput');
+    const btnSearch = document.getElementById('btnSearchGlobal');
+    
+    if(searchInput && btnSearch) {
+        searchInput.value = val;
+        btnSearch.click(); // Trigger the global search automatically!
+    }
+});
