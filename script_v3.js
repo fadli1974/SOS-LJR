@@ -2430,6 +2430,13 @@ document.getElementById('btnCloseModalUser')?.addEventListener('click', () => {
     document.getElementById('modalUser').classList.remove('flex');
 });
 
+document.getElementById('modalUser')?.addEventListener('click', (e) => {
+    if(e.target.id === 'modalUser') {
+        document.getElementById('modalUser').classList.add('hidden');
+        document.getElementById('modalUser').classList.remove('flex');
+    }
+});
+
 window.editUser = function(id) {
     const u = preloadedUsers.find(x => x['ID User'] == id);
     if(!u) return;
