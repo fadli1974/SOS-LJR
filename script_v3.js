@@ -722,6 +722,9 @@ async function fetchSheet(sheetName, tbodyId, renderFunc) {
                     tbody.innerHTML = '';
                     if(renderFunc) renderFunc(data, tbody);
                     if(window.lucide) window.lucide.createIcons();
+                    if(sheetName === 'Packing List') {
+                        populatePackingListDropdown(data);
+                    }
                 } else {
                     tbody.innerHTML = `<tr><td colspan="20" class="p-6 text-center text-gray-500">Tidak ada data di tab ${sheetName}</td></tr>`;
                 }
@@ -784,7 +787,7 @@ async function fetchSheet(sheetName, tbodyId, renderFunc) {
               if(window.lucide) window.lucide.createIcons();
           }
       }
-      if(tabId === 'tab-packing-list') {
+      if(sheetName === 'Packing List') {
           populatePackingListDropdown(dataReversed);
       }
       return dataReversed;
@@ -2545,9 +2548,15 @@ function populatePackingListDropdown(data) {
         let itn = "";
         let store = "";
         for(let k in row) {
-            const kl = k.toLowerCase();
-            if(kl.includes('inventory transfer number') || kl === 'itn') itn = String(row[k]).trim();
-            if(kl === 'to location' || kl === 'to') store = String(row[k]).trim();
+            const kl = k.trim().toLowerCase();
+            // Cek berbagai kemungkinan nama kolom ITN
+            if(kl.includes('inventory transfer number') || kl.includes('itn') || kl === 'inventorytransfernumber') {
+                itn = String(row[k]).trim();
+            }
+            // Cek berbagai kemungkinan nama kolom Store/To Location
+            if(kl.includes('to location') || kl === 'to' || kl.includes('store') || kl === 'tolocation') {
+                store = String(row[k]).trim();
+            }
         }
         if(itn && !map[itn]) {
             map[itn] = store;
@@ -2555,10 +2564,17 @@ function populatePackingListDropdown(data) {
     });
     
     let html = '<option value="">Pilih PL / Store...</option>';
+    let count = 0;
     for(let itn in map) {
         html += `<option value="${itn}">${itn}${map[itn] ? ' - ' + map[itn] : ''}</option>`;
+        count++;
     }
     dropdown.innerHTML = html;
+    
+    // Debug info jika masih kosong
+    if (count === 0 && data.length > 0) {
+        console.warn("DEBUG PACKING LIST DROPDOWN: keys in first row are", Object.keys(data[0]));
+    }
 }
 
 document.getElementById('headerPackDropdown')?.addEventListener('change', function(e) {
