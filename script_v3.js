@@ -2196,7 +2196,17 @@ document.getElementById('btnTarikPackingList')?.addEventListener('click', async 
         });
         
         document.getElementById('verifikasiArea').classList.remove('hidden');
-        document.getElementById('lblVerifikasiTitle').innerText = "Progress Verifikasi: " + itn;
+        let toLocation = "";
+        if(data.length > 0) {
+            for(let key in data[0]) {
+                if(key.toLowerCase() === 'to location' || key.toLowerCase() === 'to') {
+                    toLocation = data[0][key];
+                    break;
+                }
+            }
+        }
+        document.getElementById('lblVerifikasiTitle').innerHTML = "Progress Verifikasi: <strong>" + itn + "</strong>" + (toLocation ? " &nbsp;<i data-lucide='arrow-right' class='inline-block w-4 h-4 mx-1'></i>&nbsp; <span class='text-indigo-700 bg-indigo-100 px-2 py-1 rounded-md'>" + toLocation + "</span>" : "");
+        if(window.lucide) window.lucide.createIcons();
         
         renderVerifikasiTable();
         
