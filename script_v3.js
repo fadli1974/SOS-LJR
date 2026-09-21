@@ -2158,7 +2158,7 @@ document.getElementById('btnTarikPackingList')?.addEventListener('click', async 
     btn.disabled = true;
     
     try {
-        const resp = await fetch(SCRIPT_URL + "?action=get_packing_list_json&itn=" + encodeURIComponent(itn));
+        const resp = await fetch(SCRIPT_URL + "?action=get_packing_list_json&sheet=Packing%20List&itn=" + encodeURIComponent(itn));
         const data = await resp.json();
         
         if(!Array.isArray(data) || data.length === 0) {
