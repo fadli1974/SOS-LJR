@@ -152,10 +152,24 @@ navItems.forEach(item => {
             document.getElementById('headerPackDropdown')?.classList.remove('hidden');
             const gs = document.getElementById('globalSearchContainer');
             if(gs) { gs.classList.add('hidden'); gs.classList.remove('flex'); }
+            
+            const val = document.getElementById('headerPackDropdown')?.value;
+            const btnMove = document.getElementById('btnMoveToOutbond');
+            const userRole = localStorage.getItem('userRole');
+            if(btnMove && val && userRole === 'Admin') {
+                btnMove.classList.remove('hidden');
+                btnMove.classList.add('flex');
+            }
         } else {
             document.getElementById('headerPackDropdown')?.classList.add('hidden');
             const gs = document.getElementById('globalSearchContainer');
             if(gs) { gs.classList.remove('hidden'); gs.classList.add('flex'); }
+            
+            const btnMove = document.getElementById('btnMoveToOutbond');
+            if(btnMove) {
+                btnMove.classList.add('hidden');
+                btnMove.classList.remove('flex');
+            }
         }
         
         if(targetId === 'tab-verifikasi') {
@@ -2595,8 +2609,9 @@ document.getElementById('headerPackDropdown')?.addEventListener('change', functi
     }
     
     const btnMove = document.getElementById('btnMoveToOutbond');
+    const userRole = localStorage.getItem('userRole');
     if(btnMove) {
-        if(val) {
+        if(val && userRole === 'Admin') {
             btnMove.classList.remove('hidden');
             btnMove.classList.add('flex');
         } else {
