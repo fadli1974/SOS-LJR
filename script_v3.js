@@ -2593,6 +2593,17 @@ document.getElementById('headerPackDropdown')?.addEventListener('change', functi
             executeGlobalSearch();
         }
     }
+    
+    const btnMove = document.getElementById('btnMoveToOutbond');
+    if(btnMove) {
+        if(val) {
+            btnMove.classList.remove('hidden');
+            btnMove.classList.add('flex');
+        } else {
+            btnMove.classList.add('hidden');
+            btnMove.classList.remove('flex');
+        }
+    }
 });
 
 
@@ -2622,5 +2633,57 @@ document.addEventListener('DOMContentLoaded', () => {
         if(pEmail) pEmail.innerText = localStorage.getItem('userEmail') || '';
         
         loadDataForTab('tab-dashboard');
+    }
+});
+
+
+document.getElementById('btnMoveToOutbond')?.addEventListener('click', async () => {
+    const dropdown = document.getElementById('headerPackDropdown');
+    const itn = dropdown ? dropdown.value : '';
+    if(!itn) return alert('Silakan pilih PL terlebih dahulu dari dropdown!');
+    
+    if(!confirm('Yakin ingin memindahkan seluruh data PL ' + itn + ' ke Outbond? Data di Packing List akan dihapus.')) return;
+    
+    const btn = document.getElementById('btnMoveToOutbond');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> MEMPROSES...';
+    btn.disabled = true;
+    if(window.lucide) window.lucide.createIcons();
+    
+    try {
+        const payloadStr = JSON.stringify({
+            action: 'move_pl_to_outbond',
+            itn: itn
+        });
+        
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: payloadStr
+        });
+        const res = await resp.json();
+        
+        if(res.status === 'success') {
+            alert('Berhasil: ' + res.message);
+            // Refresh tables
+            tabCache['tab-packing-list'] = false;
+            tabCache['tab-outbond'] = false;
+            loadDataForTab('tab-packing-list');
+            autoRecalculateInventory('Outbond');
+            
+            // Trigger global search to clear
+            if(dropdown) {
+                dropdown.value = '';
+                dropdown.dispatchEvent(new Event('change'));
+            }
+        } else {
+            alert('Gagal: ' + res.message);
+        }
+    } catch(err) {
+        alert('Terjadi kesalahan: ' + err.message);
+    } finally {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        if(window.lucide) window.lucide.createIcons();
     }
 });
