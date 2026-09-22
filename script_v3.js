@@ -2653,6 +2653,7 @@ document.getElementById('btnMoveToOutbond')?.addEventListener('click', async () 
     try {
         const payloadStr = JSON.stringify({
             action: 'move_pl_to_outbond',
+            sheet: 'Packing List',
             itn: itn
         });
         
