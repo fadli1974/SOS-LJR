@@ -1,7 +1,7 @@
 // ==========================================
 // 1. KONFIGURASI GOOGLE APPS SCRIPT
 // ==========================================
-const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbzmlXBmMF1QEu2dtM2cA847dHhLB24XWnaCTR29lIlXDj15gsshfvULy1IEkudd1hl8/exec";
+const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbxHZfOdxp2CLGSGC9MpQi0IXYAi4i-rg5WUZ08xC_OQHwXZ9JlfU-MI-vwBx7jVc2FA/exec";
 
 
 // HELPER: Auto-recalculate inventory asynchronously
@@ -1231,7 +1231,7 @@ function setupAutofill(prefix) {
         if(btn) { btn.innerText ="Mencari..."; btn.disabled = true; }
         barcodeInput.style.backgroundColor = '#fef08a'; // yellow
         
-        let item = window.globalMasterData.find(d => String(d.Barcode||"").trim() === String(val).trim() || String(d.Scan||"").trim() === String(val).trim() || String(d.SKU||"").trim() === String(val).trim());
+        let item = window.globalMasterData.find(d => String(d.Barcode||d.BARCODE||"").trim() === String(val).trim() || String(d.Scan||"").trim() === String(val).trim() || String(d.SKU||d.ITEM_CODE||"").trim() === String(val).trim());
         
         // Jika tidak ada di cache lokal, cari langsung ke server Google (TextFinder API)
         if (!item) {
@@ -1246,7 +1246,7 @@ function setupAutofill(prefix) {
         
         if (item) {
             barcodeInput.style.backgroundColor = '#dcfce7'; // green-100
-            barcodeInput.dataset.realBarcode = item.Barcode || item.Scan || '';
+            barcodeInput.dataset.realBarcode = item.Barcode || item.BARCODE || item.Scan || '';
             const elBrand = document.getElementById(`${prefix}_brand`);
             const elSku = document.getElementById(`${prefix}_sku`);
             const elDesc = document.getElementById(`${prefix}_desc`);
@@ -1255,12 +1255,12 @@ function setupAutofill(prefix) {
             const elPrice = document.getElementById(`${prefix}_price`);
             const elQty = document.getElementById(`${prefix}_qty`);
             
-            if (elBrand) elBrand.value = item.Brand || '';
-            if (elSku) elSku.value = item.SKU || '';
-            if (elDesc) elDesc.value = item.Description || '';
-            if (elColor) elColor.value = item['SOS - Color'] || item['Color'] || '';
-            if (elSize) elSize.value = item['SOS - Size'] || item['Size'] || '';
-            if (elPrice) elPrice.value = item['Base Price'] || item['Price'] || '';
+            if (elBrand) elBrand.value = item.Brand || item.FBRAND || item.fbrand || item['FBRAND'] || '';
+            if (elSku) elSku.value = item.SKU || item.ITEM_CODE || item.item_code || item['ITEM_CODE'] || '';
+            if (elDesc) elDesc.value = item.Description || item.FART_DESC || item.fart_desc || item['FART_DESC'] || '';
+            if (elColor) elColor.value = item['SOS - Color'] || item['Color'] || item.Colour || item.FCOL_DESC || item['FCOL_DESC'] || '';
+            if (elSize) elSize.value = item['SOS - Size'] || item['Size'] || item.FSIZE_DESC || item['FSIZE_DESC'] || '';
+            if (elPrice) elPrice.value = item['Base Price'] || item['Price'] || item.PRICE || item['PRICE'] || '';
             if (elQty && !elQty.value) elQty.value = 1; // Default qty = 1
         } else {
             barcodeInput.style.backgroundColor = '#fee2e2'; // red-100
@@ -2276,16 +2276,16 @@ function renderVerifikasiTable() {
         let item = verifikasiData[bc];
         totalItems++;
         
-        let statusHtml = '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-bold">BELUM</span>';
-        let rowClass = "";
+        let statusHtml = '<span class="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded text-xs font-bold border border-gray-200 dark:border-gray-700">BELUM</span>';
+        let rowClass = "hover:bg-gray-50 dark:hover:bg-[#2a2a3c]";
         
         if(item.scanned === item.expected && item.expected > 0) {
-            statusHtml = '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">LENGKAP</span>';
-            rowClass = "bg-green-50";
+            statusHtml = '<span class="px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded text-xs font-bold border border-green-200 dark:border-green-800">LENGKAP</span>';
+            rowClass = "bg-green-50 dark:bg-green-900/20";
             completedItems++;
         } else if(item.scanned > 0) {
-            statusHtml = '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-bold">PROSES</span>';
-            rowClass = "bg-yellow-50";
+            statusHtml = '<span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 rounded text-xs font-bold border border-yellow-200 dark:border-yellow-800">PROSES</span>';
+            rowClass = "bg-yellow-50 dark:bg-yellow-900/20";
         }
         
         html += `
@@ -2294,7 +2294,7 @@ function renderVerifikasiTable() {
                 <td class="px-6 py-4 font-mono font-bold">${item.barcode}</td>
                 <td class="px-6 py-4">${item.desc}</td>
                 <td class="px-6 py-4 text-center font-bold text-lg">${item.expected}</td>
-                <td class="px-6 py-4 text-center font-bold text-lg ${item.scanned > 0 ? 'text-indigo-600' : ''}">${item.scanned}</td>
+                <td class="px-6 py-4 text-center font-bold text-lg ${item.scanned > 0 ? 'text-indigo-600 dark:text-indigo-400' : ''}">${item.scanned}</td>
                 <td class="px-6 py-4 text-center">${statusHtml}</td>
             </tr>
         `;
