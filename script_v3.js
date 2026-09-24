@@ -1,7 +1,7 @@
 // ==========================================
 // 1. KONFIGURASI GOOGLE APPS SCRIPT
 // ==========================================
-const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbxHZfOdxp2CLGSGC9MpQi0IXYAi4i-rg5WUZ08xC_OQHwXZ9JlfU-MI-vwBx7jVc2FA/exec";
+const SCRIPT_URL ="https://script.google.com/macros/s/AKfycbxMTgkVYcYbpSDSdVJKc6BfWHY8DXuQCjQZs_wT4TtO2zC5V4eSqXD-8Wq8lLi2ilT3/exec";
 
 
 // HELPER: Auto-recalculate inventory asynchronously
