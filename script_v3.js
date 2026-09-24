@@ -82,10 +82,21 @@ lucide.createIcons();
 const loginContainer = document.getElementById('loginContainer');
 const appContainer = document.getElementById('appContainer');
 
+// Apply saved theme on load
+if (localStorage.getItem('theme') === 'dark') {
+  document.documentElement.classList.add('dark');
+  document.getElementById('themeIcon').setAttribute('data-lucide', 'sun');
+  document.getElementById('themeText').textContent = 'Mode Terang';
+}
+
 // Theme Toggle
 document.getElementById('btnThemeToggle').addEventListener('click', () => {
   document.documentElement.classList.toggle('dark');
   const isDark = document.documentElement.classList.contains('dark');
+  
+  // Simpan pilihan tema
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  
   document.getElementById('themeIcon').setAttribute('data-lucide', isDark ? 'sun' : 'moon');
   document.getElementById('themeText').textContent = isDark ? 'Mode Terang' : 'Mode Redup';
   lucide.createIcons();
