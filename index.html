@@ -172,6 +172,7 @@
               <select id="headerPackDropdown" class="hidden bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold shadow-sm focus:outline-none focus:border-indigo-500 w-48 sm:w-64 truncate">
                   <option value="">Pilih PL / Store...</option>
               </select>
+              <span id="packTotalBadge" class="hidden bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap transition-all">Total Qty: 0</span>
               <button id="btnToggleForm" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
                 <i data-lucide="scan-line" class="w-4 h-4 mr-2"></i> <span id="lblToggleForm">SCAN / INPUT</span>
               </button>
@@ -209,8 +210,8 @@
                   </button>
                 </div>
                 <button type="button" id="btnGlobalSearch" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow">Cari</button>
-                <span id="searchTotalBadge" class="hidden bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap transition-all">Total: 0</span>
               </div>
+              <span id="searchTotalBadge" class="hidden bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap transition-all">Total: 0</span>
 
               <button id="btnSyncInventory" class="hidden bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition-colors">
                 <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> RECALCULATE STOCK

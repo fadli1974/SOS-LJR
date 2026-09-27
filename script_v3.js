@@ -133,6 +133,8 @@ navItems.forEach(item => {
     if(btnClearSearch) btnClearSearch.classList.add('hidden');
     const badge = document.getElementById('searchTotalBadge');
     if(badge) badge.classList.add('hidden');
+    const packBadge = document.getElementById('packTotalBadge');
+    if(packBadge) packBadge.classList.add('hidden');
     
     // Toggle Upload, Template, and Date Filter buttons
     const btnUpload = document.getElementById('btnUploadCsv');
@@ -329,24 +331,38 @@ const executeGlobalSearch = () => {
             let totalQty = 0;
             if(data.length > 0) {
                 data.forEach(d => {
+                    let qtyVal = 0;
                     if (actualSheetName === 'Inventory') {
-                        totalQty += parseFloat(d.Stock || d.STOCK || 0);
+                        qtyVal = parseFloat(d.Stock || d.STOCK || 0);
                     } else if (actualSheetName === 'Pengiriman') {
-                        totalQty += parseFloat(d['Total Qty'] || d.Qty || 0);
+                        qtyVal = parseFloat(d['Total Qty'] || d.Qty || 0);
                     } else {
-                        totalQty += parseFloat(d.Qty || 0);
+                        qtyVal = parseFloat(d.Qty || 0);
                     }
+                    if(!isNaN(qtyVal)) totalQty += qtyVal;
                 });
             }
             
             const badge = document.getElementById('searchTotalBadge');
-            if (badge) {
-                if (val.trim() !== '' && data.length > 0) {
-                    badge.classList.remove('hidden');
-                    badge.textContent = 'Total Qty: ' + totalQty.toLocaleString('id-ID');
+            const packBadge = document.getElementById('packTotalBadge');
+            
+            if (val.trim() !== '' && data.length > 0) {
+                if(actualSheetName === 'Packing List') {
+                    if(badge) badge.classList.add('hidden');
+                    if(packBadge) {
+                        packBadge.classList.remove('hidden');
+                        packBadge.textContent = 'Total Qty: ' + totalQty.toLocaleString('id-ID');
+                    }
                 } else {
-                    badge.classList.add('hidden');
+                    if(packBadge) packBadge.classList.add('hidden');
+                    if(badge) {
+                        badge.classList.remove('hidden');
+                        badge.textContent = 'Total Qty: ' + totalQty.toLocaleString('id-ID');
+                    }
                 }
+            } else {
+                if (badge) badge.classList.add('hidden');
+                if (packBadge) packBadge.classList.add('hidden');
             }
             
             // Re-render table by forcing loadDataForTab rendering path
@@ -1881,6 +1897,8 @@ document.getElementById('btnClearSearch')?.addEventListener('click', () => {
         document.getElementById('btnClearSearch').classList.add('hidden');
         const badge = document.getElementById('searchTotalBadge');
         if(badge) badge.classList.add('hidden');
+        const packBadge = document.getElementById('packTotalBadge');
+        if(packBadge) packBadge.classList.add('hidden');
     }
 });
 
