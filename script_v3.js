@@ -126,6 +126,14 @@ navItems.forEach(item => {
     document.getElementById(targetId).classList.remove('hidden');
     pageTitle.textContent = item.textContent.trim();
     
+    // Clear search on tab change
+    const gsInput = document.getElementById('globalSearch');
+    if(gsInput) gsInput.value = '';
+    const btnClearSearch = document.getElementById('btnClearSearch');
+    if(btnClearSearch) btnClearSearch.classList.add('hidden');
+    const badge = document.getElementById('searchTotalBadge');
+    if(badge) badge.classList.add('hidden');
+    
     // Toggle Upload, Template, and Date Filter buttons
     const btnUpload = document.getElementById('btnUploadCsv');
     const btnTemplate = document.getElementById('btnDownloadTemplate');
@@ -316,6 +324,30 @@ const executeGlobalSearch = () => {
                 
             const response = await fetch(url);
             const data = await response.json();
+            
+            // Hitung Total Qty untuk badge
+            let totalQty = 0;
+            if(data.length > 0) {
+                data.forEach(d => {
+                    if (actualSheetName === 'Inventory') {
+                        totalQty += parseFloat(d.Stock || d.STOCK || 0);
+                    } else if (actualSheetName === 'Pengiriman') {
+                        totalQty += parseFloat(d['Total Qty'] || d.Qty || 0);
+                    } else {
+                        totalQty += parseFloat(d.Qty || 0);
+                    }
+                });
+            }
+            
+            const badge = document.getElementById('searchTotalBadge');
+            if (badge) {
+                if (val.trim() !== '' && data.length > 0) {
+                    badge.classList.remove('hidden');
+                    badge.textContent = 'Total Qty: ' + totalQty.toLocaleString('id-ID');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
             
             // Re-render table by forcing loadDataForTab rendering path
             tbody.innerHTML = '';
@@ -1847,6 +1879,8 @@ document.getElementById('btnClearSearch')?.addEventListener('click', () => {
         input.value = '';
         executeGlobalSearch();
         document.getElementById('btnClearSearch').classList.add('hidden');
+        const badge = document.getElementById('searchTotalBadge');
+        if(badge) badge.classList.add('hidden');
     }
 });
 
