@@ -1622,7 +1622,7 @@ document.getElementById('btnSubmitPengirimanTemp')?.addEventListener('click', (e
     e.preventDefault();
     const qty = parseInt(document.getElementById('pg_qty').value) || 0;
     const koli = parseInt(document.getElementById('pg_koli').value) || 0;
-    const item = {"Tanggal": document.getElementById('pg_tanggal').value,"IN / OUT": document.getElementById('pg_inout').value,"Nopol": document.getElementById('pg_nopol').value,"Driver": document.getElementById('pg_driver').value,"Brand": document.getElementById('pg_brand').value,"Tujuan": document.getElementById('pg_tujuan').value,"Qty": qty,"Koli": koli,"Seal / Resi": document.getElementById('pg_seal').value,"_id": generateTempId()
+    const item = {"Tanggal": document.getElementById('pg_tanggal').value,"IN / OUT": document.getElementById('pg_inout').value,"Nopol": document.getElementById('pg_nopol').value,"Driver": document.getElementById('pg_driver').value,"Brand": document.getElementById('pg_brand').value,"Tujuan": document.getElementById('pg_tujuan').value,"Qty": qty,"Koli": koli,"Seal / Resi": document.getElementById('pg_seal').value,"Inventory Transfer Number": document.getElementById('pg_tf').value,"_id": generateTempId()
     };
     tempPengirimanList.push(item);
     renderTempPengirimanTable();
@@ -1640,7 +1640,7 @@ function renderTempPengirimanTable() {
     if(!tbody) return;
     tbody.innerHTML = '';
     tempPengirimanList.forEach((item, index) => {
-        tbody.innerHTML += `<tr><td class="p-2">${item.Tanggal}</td><td class="p-2">${item['IN / OUT'] || ''}</td><td class="p-2">${item.Nopol}</td><td class="p-2">${item.Driver}</td><td class="p-2">${item.Brand}</td><td class="p-2">${item.Tujuan}</td><td class="p-2">${item.Qty}</td><td class="p-2">${item.Koli}</td><td class="p-2">${item['Seal / Resi']}</td><td class="p-2 text-center"><button type="button" onclick="removeTempPengiriman(${index})" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`;
+        tbody.innerHTML += `<tr><td class="p-2">${item.Tanggal}</td><td class="p-2">${item['IN / OUT'] || ''}</td><td class="p-2">${item.Nopol}</td><td class="p-2">${item.Driver}</td><td class="p-2">${item.Brand}</td><td class="p-2">${item.Tujuan}</td><td class="p-2">${item.Qty}</td><td class="p-2">${item.Koli}</td><td class="p-2">${item['Seal / Resi']}</td><td class="p-2">${item['Inventory Transfer Number'] || ''}</td><td class="p-2 text-center"><button type="button" onclick="removeTempPengiriman(${index})" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`;
     });
     if(window.lucide) window.lucide.createIcons();
 }
@@ -1762,7 +1762,7 @@ function renderPengirimanRows(data, tbody) {
             let formattedDate = formatDate(d.Tanggal);
             let sealResi = d['Seal / Resi'] || d['Seal'] || '';
             let inout = d['IN / OUT'] || d['IN/OUT'] || '';
-            tbody.innerHTML += `<tr><td class="p-3">${formattedDate}</td><td class="p-3">${inout}</td><td class="p-3">${d.Nopol||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3">${d.Tujuan||''}</td><td class="p-3">${d.Qty||''}</td><td class="p-3">${d.Koli||''}</td><td class="p-3">${sealResi}</td><td class="p-3">${d.Driver||''}</td>${getActionCell(d, 'Pengiriman')}</tr>`;
+            tbody.innerHTML += `<tr><td class="p-3">${formattedDate}</td><td class="p-3">${inout}</td><td class="p-3">${d.Nopol||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3">${d.Tujuan||''}</td><td class="p-3">${d.Qty||''}</td><td class="p-3">${d.Koli||''}</td><td class="p-3">${sealResi}</td><td class="p-3">${d['Inventory Transfer Number'] || ''}</td><td class="p-3">${d.Driver||''}</td>${getActionCell(d, 'Pengiriman')}</tr>`;
         }
     });
 }

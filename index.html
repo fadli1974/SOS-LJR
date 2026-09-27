@@ -681,6 +681,7 @@
                   <div><label class="form-label text-xs">Qty</label><input type="number" id="pg_qty" required min="1" class="form-input py-2"></div>
                   <div><label class="form-label text-xs">Koli</label><input type="number" id="pg_koli" required min="1" class="form-input py-2"></div>
                   <div><label class="form-label text-xs">Seal / Resi</label><input type="text" id="pg_seal" class="form-input py-2"></div>
+                  <div><label class="form-label text-xs">Inventory Transfer Number</label><input type="text" id="pg_tf" class="form-input py-2" placeholder="IT/123..."></div>
                   <div class="col-span-full flex justify-end mt-2">
                     <button type="button" id="btnSubmitPengirimanTemp" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow">Tambah ke List Sementara</button>
                   </div>
@@ -692,7 +693,7 @@
                   <div class="overflow-x-auto max-h-60 border border-gray-200 dark:border-gray-700 rounded">
                     <table class="w-full text-left text-xs whitespace-nowrap">
                       <thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10">
-                        <tr><th class="p-2">Tanggal</th><th class="p-2">IN / OUT</th><th class="p-2">Nopol</th><th class="p-2">Driver</th><th class="p-2">Brand</th><th class="p-2">Tujuan</th><th class="p-2">Qty</th><th class="p-2">Koli</th><th class="p-2">Seal / Resi</th><th class="p-2 text-center">Aksi</th></tr>
+                        <tr><th class="p-2">Tanggal</th><th class="p-2">IN / OUT</th><th class="p-2">Nopol</th><th class="p-2">Driver</th><th class="p-2">Brand</th><th class="p-2">Tujuan</th><th class="p-2">Qty</th><th class="p-2">Koli</th><th class="p-2">Seal / Resi</th><th class="p-2">Inventory Transfer Number</th><th class="p-2 text-center">Aksi</th></tr>
                       </thead>
                       <tbody id="tempPengirimanTableBody"></tbody>
                     </table>
@@ -715,7 +716,7 @@
               <div class="overflow-auto max-h-[calc(100vh-260px)] custom-scrollbar">
                 <table class="w-full text-left text-sm whitespace-nowrap">
                   <thead class="bg-[#0a4d3c] text-white text-[11px] uppercase tracking-wider sticky top-0 z-10">
-                      <tr><th class="p-3">Tanggal</th><th class="p-3">IN / OUT</th><th class="p-3">Nopol</th><th class="p-3">Brand</th><th class="p-3">Tujuan</th><th class="p-3">Qty</th><th class="p-3">Koli</th><th class="p-3">Seal / Resi</th><th class="p-3">Driver</th><th class="p-3 text-center">Aksi</th></tr>
+                      <tr><th class="p-3">Tanggal</th><th class="p-3">IN / OUT</th><th class="p-3">Nopol</th><th class="p-3">Brand</th><th class="p-3">Tujuan</th><th class="p-3">Qty</th><th class="p-3">Koli</th><th class="p-3">Seal / Resi</th><th class="p-3">Inventory Transfer Number</th><th class="p-3">Driver</th><th class="p-3 text-center">Aksi</th></tr>
                     </thead>
                   <tbody id="pengirimanTableBody"></tbody>
                 </table>
