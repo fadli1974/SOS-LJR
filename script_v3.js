@@ -221,12 +221,14 @@ navItems.forEach(item => {
                 if (btnDownload) btnDownload.classList.remove('hidden');
                 if (document.getElementById('btnUploadPackingList')) document.getElementById('btnUploadPackingList').classList.add('hidden');
                 if (document.getElementById('btnDownloadPackingList')) document.getElementById('btnDownloadPackingList').classList.add('hidden');
+                if (document.getElementById('btnAutoBinBox')) document.getElementById('btnAutoBinBox').classList.add('hidden');
             } else {
                 btnUpload.classList.add('hidden');
                 btnTemplate.classList.remove('hidden'); // SHOW TEMPLATE FOR PACKING LIST!
                 if (btnDownload) btnDownload.classList.add('hidden');
                 if (document.getElementById('btnUploadPackingList')) document.getElementById('btnUploadPackingList').classList.remove('hidden');
                 if (document.getElementById('btnDownloadPackingList')) document.getElementById('btnDownloadPackingList').classList.remove('hidden');
+                if (document.getElementById('btnAutoBinBox')) document.getElementById('btnAutoBinBox').classList.remove('hidden');
             }
         } else {
             btnUpload.classList.add('hidden');
@@ -236,6 +238,7 @@ navItems.forEach(item => {
             
             if (document.getElementById('btnUploadPackingList')) document.getElementById('btnUploadPackingList').classList.add('hidden');
             if (document.getElementById('btnDownloadPackingList')) document.getElementById('btnDownloadPackingList').classList.add('hidden');
+            if (document.getElementById('btnAutoBinBox')) document.getElementById('btnAutoBinBox').classList.add('hidden');
         }
     }
     
@@ -2247,6 +2250,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 3000);
                 }
             });
+        });
+    }
+
+    const btnAutoBinBox = document.getElementById('btnAutoBinBox');
+    if(btnAutoBinBox) {
+        btnAutoBinBox.addEventListener('click', async () => {
+            const ori = btnAutoBinBox.innerHTML;
+            btnAutoBinBox.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Memproses...';
+            btnAutoBinBox.disabled = true;
+            if(window.lucide) window.lucide.createIcons();
+            
+            try {
+                const resp = await fetch(SCRIPT_URL + "?action=auto_bin_box");
+                const result = await resp.json();
+                if(result.status === 'success') {
+                    Swal.fire('Berhasil', 'Auto Bin/Box selesai diproses!', 'success');
+                    tabCache['tab-packing-list'] = false;
+                    loadDataForTab('tab-packing-list');
+                } else {
+                    Swal.fire('Error', result.message || 'Gagal memproses Auto Bin/Box', 'error');
+                }
+            } catch(err) {
+                Swal.fire('Error', err.toString(), 'error');
+            }
+            
+            btnAutoBinBox.innerHTML = ori;
+            btnAutoBinBox.disabled = false;
+            if(window.lucide) window.lucide.createIcons();
         });
     }
 });
