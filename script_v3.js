@@ -2334,10 +2334,14 @@ function renderVerifikasiTable() {
     let html = "";
     let totalItems = 0;
     let completedItems = 0;
+    let totalExpectedQty = 0;
+    let totalScannedQty = 0;
     
     for(let bc in verifikasiData) {
         let item = verifikasiData[bc];
         totalItems++;
+        totalExpectedQty += parseFloat(item.expected) || 0;
+        totalScannedQty += parseFloat(item.scanned) || 0;
         
         let statusHtml = '<span class="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded text-xs font-bold border border-gray-200 dark:border-gray-700">BELUM</span>';
         let rowClass = "hover:bg-gray-50 dark:hover:bg-[#2a2a3c]";
@@ -2365,6 +2369,16 @@ function renderVerifikasiTable() {
     
     tbody.innerHTML = html;
     
+    const qtyEl = document.getElementById('lblVerifikasiTotalQty');
+    if(qtyEl) {
+        if(totalItems > 0) {
+            qtyEl.classList.remove('hidden');
+            qtyEl.innerText = `Total Qty: ${totalExpectedQty.toLocaleString('id-ID')}`;
+        } else {
+            qtyEl.classList.add('hidden');
+        }
+    }
+
     const progressEl = document.getElementById('lblVerifikasiProgress');
     if(progressEl) {
         progressEl.innerText = `${completedItems} / ${totalItems} SKU Lengkap`;
