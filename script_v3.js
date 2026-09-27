@@ -2262,7 +2262,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(window.lucide) window.lucide.createIcons();
             
             try {
-                const resp = await fetch(SCRIPT_URL + "?action=auto_bin_box");
+                const resp = await fetch(SCRIPT_URL + "?action=auto_bin_box&sheet=Packing%20List");
                 const result = await resp.json();
                 if(result.status === 'success') {
                     Swal.fire('Berhasil', 'Auto Bin/Box selesai diproses!', 'success');
