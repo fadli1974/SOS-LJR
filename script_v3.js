@@ -316,9 +316,17 @@ const executeGlobalSearch = () => {
         
         try {
             // Jika kosong, load 100 terakhir (seperti semula)
-            const url = val.trim() === '' 
-                ? `${SCRIPT_URL}?sheet=${actualSheetName}&limit=100&t=${Date.now()}` 
-                : `${SCRIPT_URL}?sheet=${actualSheetName}&search_table=${encodeURIComponent(val)}&t=${Date.now()}`;
+            let url = '';
+            if (actualSheetName === 'Packing List' && val.includes('|')) {
+                const parts = val.split('|');
+                const itnVal = parts[0];
+                const storeVal = parts[1] || '';
+                url = `${SCRIPT_URL}?action=get_packing_list_json&sheet=Packing%20List&itn=${encodeURIComponent(itnVal)}&store=${encodeURIComponent(storeVal)}&t=${Date.now()}`;
+            } else {
+                url = val.trim() === '' 
+                    ? `${SCRIPT_URL}?sheet=${actualSheetName}&limit=100&t=${Date.now()}` 
+                    : `${SCRIPT_URL}?sheet=${actualSheetName}&search_table=${encodeURIComponent(val)}&t=${Date.now()}`;
+            }
                 
             if (val.trim() !== '') {
                 logActivity('Pencarian', `Mencari keyword: ${val} di sheet ${actualSheetName}`);
@@ -1762,7 +1770,7 @@ function renderPengirimanRows(data, tbody) {
             let formattedDate = formatDate(d.Tanggal);
             let sealResi = d['Seal / Resi'] || d['Seal'] || '';
             let inout = d['IN / OUT'] || d['IN/OUT'] || '';
-            tbody.innerHTML += `<tr><td class="p-3">${formattedDate}</td><td class="p-3">${inout}</td><td class="p-3">${d.Nopol||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3">${d.Tujuan||''}</td><td class="p-3">${d.Qty||''}</td><td class="p-3">${d.Koli||''}</td><td class="p-3">${sealResi}</td><td class="p-3">${d['Inventory Transfer Number'] || ''}</td><td class="p-3">${d.Driver||''}</td>${getActionCell(d, 'Pengiriman')}</tr>`;
+            tbody.innerHTML += `<tr><td class="p-3">${formattedDate}</td><td class="p-3">${inout}</td><td class="p-3">${d.Nopol||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3">${d.Tujuan||''}</td><td class="p-3">${d.Qty||''}</td><td class="p-3">${d.Koli||''}</td><td class="p-3">${sealResi}</td><td class="p-3">${d['Inventory Transfer Number'] || d['Inventory Transfer Number '] || d.ITN || ''}</td><td class="p-3">${d.Driver||''}</td>${getActionCell(d, 'Pengiriman')}</tr>`;
         }
     });
 }
@@ -2249,7 +2257,9 @@ document.addEventListener('DOMContentLoaded', () => {
 let verifikasiData = {}; // format: { "barcode1": { expected: 5, scanned: 0, brand: "...", desc: "..." } }
 
 document.getElementById('btnTarikPackingList')?.addEventListener('click', async () => {
-    const itn = document.getElementById('verifikasi_itn').value.trim();
+    const fullVal = document.getElementById('verifikasi_itn').value.trim();
+    const itn = fullVal.includes('|') ? fullVal.split('|')[0] : fullVal;
+    const store = fullVal.includes('|') ? fullVal.split('|')[1] : '';
     if(!itn) return alert("Masukkan Nomor Packing List / ITN");
     
     const btn = document.getElementById('btnTarikPackingList');
@@ -2259,7 +2269,7 @@ document.getElementById('btnTarikPackingList')?.addEventListener('click', async 
     btn.disabled = true;
     
     try {
-        const resp = await fetch(SCRIPT_URL + "?action=get_packing_list_json&sheet=Packing%20List&itn=" + encodeURIComponent(itn));
+        const resp = await fetch(SCRIPT_URL + "?action=get_packing_list_json&sheet=Packing%20List&itn=" + encodeURIComponent(itn) + "&store=" + encodeURIComponent(store));
         const data = await resp.json();
         
         if(!Array.isArray(data) || data.length === 0) {
@@ -2662,7 +2672,7 @@ async function populatePackingListDropdown() {
         let html = '<option value="">Pilih PL / Store...</option>';
         if(options && options.length > 0) {
             options.forEach(opt => {
-                html += `<option value="${opt.itn}">${opt.itn}${opt.store ? ' - ' + opt.store : ''}</option>`;
+                html += `<option value="${opt.itn}|${opt.store}">${opt.itn}${opt.store ? ' - ' + opt.store : ''}</option>`;
             });
         }
         if(dropdown) dropdown.innerHTML = html;
@@ -2731,7 +2741,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.getElementById('btnMoveToOutbond')?.addEventListener('click', async () => {
     const dropdown = document.getElementById('headerPackDropdown');
-    const itn = dropdown ? dropdown.value : '';
+    const fullVal = dropdown ? dropdown.value : '';
+    const itn = fullVal.includes('|') ? fullVal.split('|')[0] : fullVal;
     if(!itn) return alert('Silakan pilih PL terlebih dahulu dari dropdown!');
     
     if(!confirm('Yakin ingin memindahkan seluruh data PL ' + itn + ' ke Outbond? Data di Packing List akan dihapus.')) return;
@@ -2743,10 +2754,12 @@ document.getElementById('btnMoveToOutbond')?.addEventListener('click', async () 
     if(window.lucide) window.lucide.createIcons();
     
     try {
+        const storeVal = fullVal.includes('|') ? fullVal.split('|')[1] : '';
         const payloadStr = JSON.stringify({
             action: 'move_pl_to_outbond',
             sheet: 'Packing List',
-            itn: itn
+            itn: itn,
+            store: storeVal
         });
         
         const resp = await fetch(SCRIPT_URL, {
