@@ -177,7 +177,7 @@ navItems.forEach(item => {
             const val = document.getElementById('headerPackDropdown')?.value;
             const btnMove = document.getElementById('btnMoveToOutbond');
             const userRole = localStorage.getItem('userRole');
-            if(btnMove && val && userRole === 'Admin') {
+            if(btnMove && val && userRole && userRole.toLowerCase() === 'admin') {
                 btnMove.classList.remove('hidden');
                 btnMove.classList.add('flex');
             }
@@ -2674,7 +2674,7 @@ document.getElementById('headerPackDropdown')?.addEventListener('change', functi
     const btnMove = document.getElementById('btnMoveToOutbond');
     const userRole = localStorage.getItem('userRole');
     if(btnMove) {
-        if(val && userRole === 'Admin') {
+        if(val && userRole && userRole.toLowerCase() === 'admin') {
             btnMove.classList.remove('hidden');
             btnMove.classList.add('flex');
         } else {
