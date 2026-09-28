@@ -1185,7 +1185,7 @@ async function loadDataForTab(tabId) {
                 parsed.forEach(d => {
                     if(d.Barcode) {
                         const price = d.Price || d.PRICE || d['Base Price'] || d[' Base Price'] || '';
-                        tMaster.innerHTML += `<tr><td class="p-3">${d.Barcode}</td><td class="p-3">${d.SKU||''}</td><td class="p-3">${d.Description||''}</td><td class="p-3">${d.Colour||d.Color||''}</td><td class="p-3">${d.Size||''}</td><td class="p-3">${price}</td><td class="p-3">${d.FPRODUK||d.Category||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3 text-center">-</td></tr>`;
+                        tMaster.innerHTML += `<tr><td class="p-3">${d.Barcode}</td><td class="p-3">${d.SKU||''}</td><td class="p-3">${d.Description||''}</td><td class="p-3">${d.Colour||d.Color||''}</td><td class="p-3">${d.Size||''}</td><td class="p-3">${price}</td><td class="p-3">${d.FPRODUK||d.Category||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3 text-center"><button type="button" class="text-blue-500 hover:text-blue-700 mx-1" onclick="editMasterRow('${d.Barcode}')" title="Edit"><i data-lucide="edit" class="w-4 h-4 inline"></i></button><button type="button" class="text-red-500 hover:text-red-700 mx-1" onclick="deleteMasterRow('${d.Barcode}')" title="Hapus"><i data-lucide="trash-2" class="w-4 h-4 inline"></i></button></td></tr>`;
                     }
                 });
             } catch(e) {}
@@ -1213,7 +1213,7 @@ async function loadDataForTab(tabId) {
                 freshData.forEach(d => {
                     if(d.Barcode) {
                         const price = d.Price || d.PRICE || d['Base Price'] || d[' Base Price'] || '';
-                        tMaster.innerHTML += `<tr><td class="p-3">${d.Barcode}</td><td class="p-3">${d.SKU||''}</td><td class="p-3">${d.Description||''}</td><td class="p-3">${d.Colour||d.Color||''}</td><td class="p-3">${d.Size||''}</td><td class="p-3">${price}</td><td class="p-3">${d.FPRODUK||d.Category||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3 text-center">-</td></tr>`;
+                        tMaster.innerHTML += `<tr><td class="p-3">${d.Barcode}</td><td class="p-3">${d.SKU||''}</td><td class="p-3">${d.Description||''}</td><td class="p-3">${d.Colour||d.Color||''}</td><td class="p-3">${d.Size||''}</td><td class="p-3">${price}</td><td class="p-3">${d.FPRODUK||d.Category||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3 text-center"><button type="button" class="text-blue-500 hover:text-blue-700 mx-1" onclick="editMasterRow('${d.Barcode}')" title="Edit"><i data-lucide="edit" class="w-4 h-4 inline"></i></button><button type="button" class="text-red-500 hover:text-red-700 mx-1" onclick="deleteMasterRow('${d.Barcode}')" title="Hapus"><i data-lucide="trash-2" class="w-4 h-4 inline"></i></button></td></tr>`;
                     }
                 });
             }
@@ -1707,8 +1707,11 @@ function handleDeleteRow(sheetName, dataStr) {
     .then(res => {
         if(res.status === 'success') {
             alert('Data berhasil dihapus');
-            tabCache['tab-' + sheetName.toLowerCase()] = false;
-            loadDataForTab('tab-' + sheetName.toLowerCase());
+            let tabIdStr = 'tab-' + sheetName.toLowerCase();
+            if(sheetName === 'Master') tabIdStr = 'tab-master-data';
+            if(sheetName === 'Packing List') tabIdStr = 'tab-packing-list';
+            tabCache[tabIdStr] = false;
+            loadDataForTab(tabIdStr);
         } else alert('Gagal: ' + res.message);
     });
 }
@@ -1765,8 +1768,11 @@ function saveRowEdit() {
         if(res.status === 'success') {
             alert('Data berhasil diubah');
             closeEditModal();
-            tabCache['tab-' + currentEditSheet.toLowerCase()] = false;
-            loadDataForTab('tab-' + currentEditSheet.toLowerCase());
+            let tabIdStr = 'tab-' + currentEditSheet.toLowerCase();
+            if(currentEditSheet === 'Master') tabIdStr = 'tab-master-data';
+            if(currentEditSheet === 'Packing List') tabIdStr = 'tab-packing-list';
+            tabCache[tabIdStr] = false;
+            loadDataForTab(tabIdStr);
         } else alert('Gagal: ' + res.message);
     });
 }
@@ -2832,3 +2838,18 @@ document.getElementById('btnMoveToOutbond')?.addEventListener('click', async () 
         if(window.lucide) window.lucide.createIcons();
     }
 });
+
+
+
+window.editMasterRow = function(barcode) {
+    if(!window.globalMasterData) return;
+    const rowData = window.globalMasterData.find(x => String(x.Barcode) === String(barcode));
+    if(rowData) window.handleEditRow('Master', encodeURIComponent(JSON.stringify(rowData)));
+};
+window.deleteMasterRow = function(barcode) {
+    if(!window.globalMasterData) return;
+    const rowData = window.globalMasterData.find(x => String(x.Barcode) === String(barcode));
+    if(rowData) window.handleDeleteRow('Master', encodeURIComponent(JSON.stringify(rowData)));
+};
+
+
