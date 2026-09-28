@@ -1184,8 +1184,8 @@ async function loadDataForTab(tabId) {
                 tMaster.innerHTML = '';
                 parsed.forEach(d => {
                     if(d.Barcode) {
-                        const price = d['Base Price'] || d[' Base Price'] || '';
-                        tMaster.innerHTML += `<tr><td class="p-3">${d.Barcode}</td><td class="p-3">${d.SKU||''}</td><td class="p-3">${d.Description||''}</td><td class="p-3">${d['SOS - Color']||''}</td><td class="p-3">${d['SOS - Size']||''}</td><td class="p-3">${price}</td><td class="p-3">${d['SOS - Category']||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3">${d['SOS - Age gender Product']||''}</td><td class="p-3">${d['SOS - Season']||''}</td><td class="p-3 text-center">-</td></tr>`;
+                        const price = d.Price || d.PRICE || d['Base Price'] || d[' Base Price'] || '';
+                        tMaster.innerHTML += `<tr><td class="p-3">${d.Barcode}</td><td class="p-3">${d.SKU||''}</td><td class="p-3">${d.Description||''}</td><td class="p-3">${d.Colour||d.Color||''}</td><td class="p-3">${d.Size||''}</td><td class="p-3">${price}</td><td class="p-3">${d.FPRODUK||d.Category||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3 text-center">-</td></tr>`;
                     }
                 });
             } catch(e) {}
@@ -1212,8 +1212,8 @@ async function loadDataForTab(tabId) {
                 tMaster.innerHTML = '';
                 freshData.forEach(d => {
                     if(d.Barcode) {
-                        const price = d['Base Price'] || d[' Base Price'] || '';
-                        tMaster.innerHTML += `<tr><td class="p-3">${d.Barcode}</td><td class="p-3">${d.SKU||''}</td><td class="p-3">${d.Description||''}</td><td class="p-3">${d['SOS - Color']||''}</td><td class="p-3">${d['SOS - Size']||''}</td><td class="p-3">${price}</td><td class="p-3">${d['SOS - Category']||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3">${d['SOS - Age gender Product']||''}</td><td class="p-3">${d['SOS - Season']||''}</td><td class="p-3 text-center">-</td></tr>`;
+                        const price = d.Price || d.PRICE || d['Base Price'] || d[' Base Price'] || '';
+                        tMaster.innerHTML += `<tr><td class="p-3">${d.Barcode}</td><td class="p-3">${d.SKU||''}</td><td class="p-3">${d.Description||''}</td><td class="p-3">${d.Colour||d.Color||''}</td><td class="p-3">${d.Size||''}</td><td class="p-3">${price}</td><td class="p-3">${d.FPRODUK||d.Category||''}</td><td class="p-3">${d.Brand||''}</td><td class="p-3 text-center">-</td></tr>`;
                     }
                 });
             }
@@ -1368,7 +1368,15 @@ setupAutofill('ret');
 
 document.getElementById('masterForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const payload = {"Barcode": document.getElementById('mst_barcode').value,"SKU": document.getElementById('mst_sku').value,"Description": document.getElementById('mst_desc').value,"SOS - Color": document.getElementById('mst_color').value,"SOS - Size": document.getElementById('mst_size').value,"Base Price": document.getElementById('mst_price').value,"SOS - Category": document.getElementById('mst_category').value,"Brand": document.getElementById('mst_brand').value,"SOS - Age gender Product": document.getElementById('mst_age_gender').value,"SOS - Season": document.getElementById('mst_season').value
+  const payload = {
+      "Barcode": document.getElementById('mst_barcode').value,
+      "SKU": document.getElementById('mst_sku').value,
+      "Description": document.getElementById('mst_desc').value,
+      "Colour": document.getElementById('mst_color').value,
+      "Size": document.getElementById('mst_size').value,
+      "Price": document.getElementById('mst_price').value,
+      "FPRODUK": document.getElementById('mst_category').value,
+      "Brand": document.getElementById('mst_brand').value
   };
   const btn = e.submitter; btn.innerText ="Menyimpan..."; btn.disabled = true;
   await postData('add', 'Master', payload);
